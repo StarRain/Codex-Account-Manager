@@ -1619,6 +1619,28 @@ final class CodexAccountManagerTests: XCTestCase {
         XCTAssertEqual(try service.readCurrent().provider, "openai")
     }
 
+    func testRealCodexSwitchesFromFakeChatGPTToAPIKey() throws {
+        let home = FileManager.default.temporaryDirectory.appendingPathComponent("cam-real-api-switch-" + UUID().uuidString)
+        try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: home) }
+        try "cli_auth_credentials_store = \"file\"\n".write(to: home.appendingPathComponent("config.toml"), atomically: true, encoding: .utf8)
+        let original = try realisticFakeChatGPTAuth(email: "account@example.invalid", subject: "fake-user", workspace: "fake-workspace")
+        let files = FileCredentials(home: home)
+        try files.replace(expected: nil, with: original)
+
+        var env = ProcessInfo.processInfo.environment
+        for key in ["CODEX_SQLITE_HOME", "CODEX_API_KEY", "OPENAI_API_KEY", "CODEX_ACCESS_TOKEN", "OPENAI_FEDERATION_RULE_ID", "OPENAI_IDENTITY_TOKEN_FILE", "OPENAI_WORKLOAD_IDENTITY_CONTEXT"] { env.removeValue(forKey: key) }
+        env["CODEX_HOME"] = home.path
+        guard let executable = try? CodexExecutable.find(environment: env) else { throw XCTSkip("Codex CLI unavailable") }
+        prepareCodexPath(&env, executable: executable)
+        let service = CodexService(environment: env)
+        XCTAssertEqual(try service.readCurrent().accountType, "chatgpt")
+        let profile = CodexProfile(id: UUID(), name: "API", kind: .openai, model: nil, baseURL: nil, hasSecret: true)
+        try service.activateAPIKey(profile, secret: "sk-test-only-not-a-real-key", expectedPrevious: original)
+        XCTAssertEqual(try service.readCurrent().accountType, "apiKey")
+        XCTAssertEqual(try files.read()?.fingerprint, CredentialSnapshot.fingerprint("api\0sk-test-only-not-a-real-key"))
+    }
+
     func testRealCodexCanResumeSharedLocalThreadAfterFakeChatGPTSwitch() throws {
         let home = FileManager.default.temporaryDirectory.appendingPathComponent("codex-shared-chatgpt-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
@@ -1749,6 +1771,41 @@ final class CodexAccountManagerTests: XCTestCase {
         XCTAssertNotNil(current.credentialFingerprint)
     }
 
+    func testCodexProcessExitWaitKeepsIndependentSessionsProtected() throws {
+        var elapsed: TimeInterval = 0
+        var checks = 0
+        try waitForCodexCLIToExit(maximumWait: 1, now: { elapsed }, sleep: { elapsed += $0 }) {
+            checks += 1
+            return checks < 3
+        }
+        XCTAssertEqual(checks, 3)
+        XCTAssertEqual(elapsed, 0.5, accuracy: 0.001)
+
+        checks = 0
+        elapsed = 0
+        XCTAssertThrowsError(try waitForCodexCLIToExit(maximumWait: 0, now: { elapsed }, sleep: { elapsed += $0 }) {
+            checks += 1
+            return true
+        }) { error in
+            guard case CodexError.codexStillRunning = error else { return XCTFail("Unexpected error: \(error)") }
+        }
+        XCTAssertEqual(checks, 1)
+        XCTAssertEqual(elapsed, 0)
+
+        checks = 0
+        XCTAssertThrowsError(try waitForCodexCLIToExit(maximumWait: 0.5, now: { elapsed }, sleep: { elapsed += $0 }) {
+            checks += 1
+            return true
+        }) { error in
+            guard case CodexError.codexStillRunning = error else { return XCTFail("Unexpected error: \(error)") }
+        }
+        XCTAssertEqual(checks, 3)
+        XCTAssertEqual(elapsed, 0.5, accuracy: 0.001)
+        XCTAssertThrowsError(try waitForCodexCLIToExit(maximumWait: 1) { throw CodexError.processCheckFailed }) { error in
+            guard case CodexError.processCheckFailed = error else { return XCTFail("Unexpected error: \(error)") }
+        }
+    }
+
     func testDiagnosticLogHonorsLevelAndDisable() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("codex-diagnostics-" + UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -1760,8 +1817,14 @@ final class CodexAccountManagerTests: XCTestCase {
         XCTAssertTrue(first.contains("切换登录失败"))
         XCTAssertFalse(first.contains("开始切换登录"))
         XCTAssertEqual((try FileManager.default.attributesOfItem(atPath: file.path)[.posixPermissions] as? NSNumber)?.intValue, 0o600)
+        log.configure(directory: root, enabled: true, level: .info)
+        log.record(.switchAccountStarted)
+        log.record(.switchAPIKeyStarted)
+        let withTargets = try String(contentsOf: file, encoding: .utf8)
+        XCTAssertTrue(withTargets.contains("开始切换账号登录"))
+        XCTAssertTrue(withTargets.contains("开始切换 API Key 登录"))
         log.configure(directory: root, enabled: false, level: .trace)
         log.record(.started)
-        XCTAssertEqual(try String(contentsOf: file, encoding: .utf8), first)
+        XCTAssertEqual(try String(contentsOf: file, encoding: .utf8), withTargets)
     }
 }

@@ -32,6 +32,8 @@ enum DiagnosticEvent: String {
     case profileRemoved = "配置已移除"
     case profileRemoveFailed = "配置移除失败"
     case switchStarted = "开始切换登录"
+    case switchAccountStarted = "开始切换账号登录"
+    case switchAPIKeyStarted = "开始切换 API Key 登录"
     case switchFinished = "切换登录完成"
     case switchFailed = "切换登录失败"
     case loggingEnabled = "诊断日志已启用"

@@ -780,7 +780,11 @@ final class AppState: ObservableObject {
             setMessage(message, error: true); onActivationFailure?(message); return
         }
         busy = true
-        diagnostics.record(.switchStarted)
+        switch profile.kind {
+        case .chatgpt: diagnostics.record(.switchAccountStarted)
+        case .openai: diagnostics.record(.switchAPIKeyStarted)
+        case .provider: diagnostics.record(.switchStarted)
+        }
         invalidateCurrentRefresh()
         let needsLogin = profile.kind == .chatgpt && (!profile.hasSecret || reauthenticate)
         let cancellation = needsLogin ? LoginCancellation() : nil
@@ -803,7 +807,10 @@ final class AppState: ObservableObject {
                     guard applications.allSatisfy(\.isTerminated) else { throw CodexError.desktopQuitFailed }
                 }
                 guard refreshGroup.wait(timeout: .now() + 20) == .success else { throw CodexError.processCheckFailed }
-                try requireNoRunningCodexCLI()
+                // The desktop process may exit before its app-server child.
+                // Give those children time to finish without terminating an
+                // independently running CLI session.
+                try requireNoRunningCodexCLI(waitForExit: !applications.isEmpty || fromPending ? 5 : 0)
                 let previous = try preserveCurrentAccount(service: service, profiles: &next, keys: keys, storage: storage, cachedQuotas: cachedQuotas)
                 if profile.kind == .chatgpt && profile.hasSecret && !reauthenticate {
                     try service.activateSavedChatGPT(profile, credential: keys.load(id: profile.id), expectedPrevious: previous)
@@ -874,7 +881,25 @@ final class AppState: ObservableObject {
     }
 }
 
-private func requireNoRunningCodexCLI() throws {
+func waitForCodexCLIToExit(maximumWait: TimeInterval, pollInterval: TimeInterval = 0.25,
+                           now: () -> TimeInterval = { ProcessInfo.processInfo.systemUptime },
+                           sleep: (TimeInterval) -> Void = { Thread.sleep(forTimeInterval: $0) },
+                           isRunning: () throws -> Bool) throws {
+    let deadline = now() + max(0, maximumWait)
+    while try isRunning() {
+        let remaining = deadline - now()
+        guard remaining > 0 else { throw CodexError.codexStillRunning }
+        sleep(min(pollInterval, remaining))
+    }
+}
+
+private func requireNoRunningCodexCLI(waitForExit: TimeInterval = 0) throws {
+    try waitForCodexCLIToExit(maximumWait: waitForExit) {
+        try isCodexCLIRunning()
+    }
+}
+
+private func isCodexCLIRunning() throws -> Bool {
     let check = Process()
     check.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
     check.arguments = ["-i", "-u", String(getuid()), "-x", "codex|codex-app-server|codex-app-serve"]
@@ -886,8 +911,9 @@ private func requireNoRunningCodexCLI() throws {
     guard finished.wait(timeout: .now() + 5) == .success else {
         check.terminate(); check.waitUntilExit(); throw CodexError.processCheckFailed
     }
-    if check.terminationStatus == 0 { throw CodexError.codexStillRunning }
+    if check.terminationStatus == 0 { return true }
     guard check.terminationStatus == 1 else { throw CodexError.processCheckFailed }
+    return false
 }
 
 /// Persist only an alias for the active identity; credentials are backed up on switch.
