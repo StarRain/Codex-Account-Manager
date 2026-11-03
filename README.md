@@ -6,6 +6,8 @@
 
 <p align="center">在 macOS 上管理和切换 Codex 账号与 API Key。</p>
 
+<p align="center"><a href="https://starrain.github.io/Codex-Account-Manager/">访问官网</a> · <a href="https://github.com/StarRain/Codex-Account-Manager/releases/latest">下载最新版本</a></p>
+
 <p align="center">
   <img alt="Version" src="https://img.shields.io/badge/version-v1.0.0-3375d2">
   <img alt="Platform" src="https://img.shields.io/badge/platform-macOS%2013%2B-11151d">
