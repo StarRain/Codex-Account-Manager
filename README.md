@@ -101,7 +101,7 @@ open "dist/CAM.app"
 
 ### 统一 Codex 会话历史
 
-账号和 API Key 使用同一个 Codex Home 和服务商分组。开启“统一 Codex 会话历史”后，如果当前配置是 CC Switch 产生的官方 `custom` 共享分组，CAM 会在确认其没有自定义地址、凭据或请求头后，在切换时保留该分组。此功能不依赖 CC Switch 运行，也不修改现有会话文件。
+账号和 API Key 使用同一个 Codex Home。开启“统一 Codex 会话历史”后，CAM 会在符合条件时保留当前的官方共享服务商分组，不修改现有会话文件。
 
 该设置不会迁移其他服务商分组中的旧会话，也不会合并不同账号的云端会话。
 
@@ -135,7 +135,6 @@ xcodebuild -project CodexAccountManager.xcodeproj -scheme CodexAccountManager -d
 ## 相关项目
 
 - [Codex](https://github.com/openai/codex)：OpenAI 的 Codex 工具。
-- [CC Switch](https://github.com/farion1231/cc-switch)：CAM 的界面布局参考。
 
 ## 参与贡献
 
