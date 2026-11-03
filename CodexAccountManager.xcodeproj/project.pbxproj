@@ -24,6 +24,7 @@
 		100000000000000000000010 /* Edit.png in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000013 /* Edit.png */; };
 		100000000000000000000011 /* SwitchAccount.png in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000014 /* SwitchAccount.png */; };
 		100000000000000000000012 /* StatusPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000015 /* StatusPanel.swift */; };
+		100000000000000000000013 /* Localization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000016 /* Localization.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -58,6 +59,7 @@
 		200000000000000000000013 /* Edit.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Edit.png; sourceTree = "<group>"; };
 		200000000000000000000014 /* SwitchAccount.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = SwitchAccount.png; sourceTree = "<group>"; };
 		200000000000000000000015 /* StatusPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusPanel.swift; sourceTree = "<group>"; };
+		200000000000000000000016 /* Localization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Localization.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -85,6 +87,7 @@
 				200000000000000000000003 /* CodexClient.swift */,
 				200000000000000000000004 /* DiagnosticLog.swift */,
 				200000000000000000000005 /* FileCredentials.swift */,
+				200000000000000000000016 /* Localization.swift */,
 				200000000000000000000006 /* Main.swift */,
 				200000000000000000000007 /* Models.swift */,
 				200000000000000000000008 /* Storage.swift */,
@@ -166,7 +169,7 @@
 		700000000000000000000003 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (100000000000000000000001 /* AppState.swift in Sources */, 100000000000000000000002 /* Branding.swift in Sources */, 100000000000000000000003 /* CodexClient.swift in Sources */, 100000000000000000000004 /* DiagnosticLog.swift in Sources */, 100000000000000000000005 /* FileCredentials.swift in Sources */, 100000000000000000000006 /* Main.swift in Sources */, 100000000000000000000007 /* Models.swift in Sources */, 100000000000000000000008 /* Storage.swift in Sources */, 100000000000000000000012 /* StatusPanel.swift in Sources */, 100000000000000000000009 /* Views.swift in Sources */,);
+			files = (100000000000000000000001 /* AppState.swift in Sources */, 100000000000000000000002 /* Branding.swift in Sources */, 100000000000000000000003 /* CodexClient.swift in Sources */, 100000000000000000000004 /* DiagnosticLog.swift in Sources */, 100000000000000000000005 /* FileCredentials.swift in Sources */, 100000000000000000000013 /* Localization.swift in Sources */, 100000000000000000000006 /* Main.swift in Sources */, 100000000000000000000007 /* Models.swift in Sources */, 100000000000000000000008 /* Storage.swift in Sources */, 100000000000000000000012 /* StatusPanel.swift in Sources */, 100000000000000000000009 /* Views.swift in Sources */,);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		700000000000000000000004 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (10000000000000000000000D /* CodexAccountManagerTests.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };

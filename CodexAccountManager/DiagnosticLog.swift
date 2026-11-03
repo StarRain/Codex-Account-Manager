@@ -6,11 +6,11 @@ enum DiagnosticLevel: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .error: return "错误"
-        case .warning: return "警告"
-        case .info: return "信息"
-        case .debug: return "调试"
-        case .trace: return "详细"
+        case .error: return L("错误")
+        case .warning: return L("警告")
+        case .info: return L("信息")
+        case .debug: return L("调试")
+        case .trace: return L("详细")
         }
     }
     var priority: Int {

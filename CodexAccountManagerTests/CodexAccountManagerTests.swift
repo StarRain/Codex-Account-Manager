@@ -26,23 +26,81 @@ private final class EditShortcutProbe: NSObject {
 }
 
 final class CodexAccountManagerTests: XCTestCase {
+    func testLocalizationHandlesLanguagesAndInterpolatedValues() {
+        XCTAssertEqual(AppLanguage.allCases.map(\.title), ["简体中文", "繁體中文", "English"])
+        XCTAssertEqual(Localization.text("账号管理", language: .simplifiedChinese), "账号管理")
+        XCTAssertEqual(Localization.text("账号管理", language: .traditionalChinese), "帳號管理")
+        XCTAssertEqual(Localization.text("账号管理", language: .english), "Account management")
+        XCTAssertEqual(Localization.text("剩余 {0}%", arguments: ["47"], language: .english), "47% remaining")
+        XCTAssertEqual(Localization.text("删除 {0}", arguments: ["A {1}"], language: .english), "Delete A {1}")
+        XCTAssertEqual(Localization.text("{0} 小时", arguments: ["1"], language: .english), "1 hour")
+    }
+
+    func testCreditDisplayUsesConsistentLabelsAndPreservesReportedPrecision() {
+        let previous = Localization.language
+        defer { Localization.select(previous) }
+        Localization.select(.simplifiedChinese)
+        XCTAssertEqual(localizedQuotaCredits("积分：0.0000"), "积分：0")
+        XCTAssertEqual(localizedQuotaCredits("积分：502.9410890000"), "积分：502.941089")
+        XCTAssertEqual(localizedQuotaCredits("积分：0.0005"), "积分：0.0005")
+        XCTAssertEqual(localizedQuotaCredits("积分：不限"), "积分：不限")
+        XCTAssertEqual(localizedQuotaCredits("积分可用"), "积分：可用")
+        XCTAssertEqual(localizedQuotaCredits("无可用积分"), "积分：不可用")
+        Localization.select(.english)
+        XCTAssertEqual(localizedQuotaCredits("积分：0.0000"), "Credits: 0")
+        XCTAssertEqual(localizedQuotaCredits("积分可用"), "Credits: available")
+    }
+
+    @MainActor
+    func testLanguageSelectionPersistsAndLocalizesCachedQuota() throws {
+        let previous = Localization.language
+        defer { Localization.select(previous) }
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("cam-language-test-" + UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let suite = "local.cam.language-test." + UUID().uuidString
+        let preferences = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { preferences.removePersistentDomain(forName: suite) }
+        preferences.set(root.path, forKey: "codexHome")
+        preferences.set(try fixture("mock_codex").path, forKey: "codexPath")
+        preferences.set(false, forKey: "diagnosticEnabled")
+        let store = ProfileStore(directory: root.appendingPathComponent("metadata"))
+        let state = AppState(demo: false, storage: store, preferences: preferences)
+        var observed: AppLanguage?
+        state.onLanguageChanged = { observed = $0 }
+        state.setLanguage(.english)
+        XCTAssertEqual(observed, .english)
+        XCTAssertEqual(preferences.string(forKey: "language"), AppLanguage.english.rawValue)
+        XCTAssertEqual(localizedQuotaCredits("积分：502.9"), "Credits: 502.9")
+        XCTAssertEqual(Localization.text("工作区积分不足"), "Workspace credits depleted")
+        XCTAssertEqual(QuotaWindow(id: "primary", usedPercent: 0, durationMinutes: 60, resetsAt: nil).title, "1 hour")
+
+        let restored = AppState(demo: false, storage: store, preferences: preferences)
+        XCTAssertEqual(restored.language, .english)
+        restored.setLanguage(.traditionalChinese)
+        XCTAssertEqual(Localization.text("界面语言"), "介面語言")
+        XCTAssertEqual(localizedQuotaCredits("积分：502.9"), "積分：502.9")
+    }
+
     func testPanelMenusStayInsideWindowAtEdges() {
         let container = CGSize(width: 512, height: 480)
-        let menu = CGSize(width: 190, height: 82)
+        let menus = [CGSize(width: 190, height: 82), CGSize(width: 180, height: 118)]
         let anchors = [
             CGRect(x: 472, y: 10, width: 32, height: 32),
             CGRect(x: 472, y: 430, width: 32, height: 32),
             CGRect(x: 0, y: 0, width: 24, height: 24),
         ]
-        for anchor in anchors {
-            let frame = CGRect(origin: PanelMenuPlacement.origin(anchor: anchor, container: container, menu: menu), size: menu)
-            XCTAssertGreaterThanOrEqual(frame.minX, 8)
-            XCTAssertGreaterThanOrEqual(frame.minY, 8)
-            XCTAssertLessThanOrEqual(frame.maxX, container.width - 8)
-            XCTAssertLessThanOrEqual(frame.maxY, container.height - 8)
+        for menu in menus {
+            for anchor in anchors {
+                let frame = CGRect(origin: PanelMenuPlacement.origin(anchor: anchor, container: container, menu: menu), size: menu)
+                XCTAssertGreaterThanOrEqual(frame.minX, 8)
+                XCTAssertGreaterThanOrEqual(frame.minY, 8)
+                XCTAssertLessThanOrEqual(frame.maxX, container.width - 8)
+                XCTAssertLessThanOrEqual(frame.maxY, container.height - 8)
+            }
+            let bottom = PanelMenuPlacement.origin(anchor: anchors[1], container: container, menu: menu)
+            XCTAssertLessThan(bottom.y + menu.height, anchors[1].minY)
         }
-        let bottom = PanelMenuPlacement.origin(anchor: anchors[1], container: container, menu: menu)
-        XCTAssertLessThan(bottom.y + menu.height, anchors[1].minY)
     }
 
     func testActionIconsLoadFromAppBundleAsTemplates() {
@@ -100,6 +158,40 @@ final class CodexAccountManagerTests: XCTestCase {
     }
 
     @MainActor
+    func testCurrentLoginDisplayMatchesOnlyTheActiveCredential() throws {
+        let state = AppState(demo: true)
+        let chat = try XCTUnwrap(state.profiles.first { $0.kind == .chatgpt })
+        var display = try XCTUnwrap(state.currentLoginDisplayItem)
+        XCTAssertEqual(display.kind, .chatgpt)
+        XCTAssertEqual(display.name, "个人账号")
+        XCTAssertEqual(display.accountEmail, "demo@example.invalid")
+        XCTAssertEqual(display.accountPlanType, "plus")
+
+        state.current.credentialFingerprint = "different-account"
+        state.current.account = "other@example.invalid"
+        state.current.accountDisplayName = "官方名称"
+        display = try XCTUnwrap(state.currentLoginDisplayItem)
+        XCTAssertEqual(display.name, "官方名称")
+        XCTAssertEqual(display.accountEmail, "other@example.invalid")
+        XCTAssertNotEqual(display.name, chat.name)
+
+        let keyIndex = try XCTUnwrap(state.profiles.firstIndex { $0.kind == .openai })
+        state.profiles[keyIndex].secretFingerprint = "active-key"
+        state.current.accountType = "apiKey"
+        state.current.credentialFingerprint = "active-key"
+        display = try XCTUnwrap(state.currentLoginDisplayItem)
+        XCTAssertEqual(display.kind, .openai)
+        XCTAssertEqual(display.name, "工作 API Key")
+        XCTAssertNil(display.accountEmail)
+        XCTAssertNil(display.accountPlanType)
+
+        state.current.credentialFingerprint = "unsaved-key"
+        XCTAssertEqual(state.currentLoginDisplayItem?.name, "当前 API Key")
+        state.current.accountAvailable = false
+        XCTAssertNil(state.currentLoginDisplayItem)
+    }
+
+    @MainActor
     func testCurrentProfileCannotBeSwitchedOrDeletedButCanBeReauthenticated() throws {
         let state = AppState(demo: true)
         let saved = try XCTUnwrap(state.profiles.first)
@@ -154,6 +246,59 @@ final class CodexAccountManagerTests: XCTestCase {
         XCTAssertTrue(state.update(keyProfile, name: "密钥别名", model: "", baseURL: "", secret: ""))
         XCTAssertEqual(state.profiles.first { $0.id == keyProfile.id }?.name, "密钥别名")
         XCTAssertFalse(try XCTUnwrap(state.profiles.first { $0.id == keyProfile.id }).hasSecret)
+    }
+
+    @MainActor
+    func testNamesRejectDuplicatesWhenAddingOrEditing() throws {
+        let state = AppState(demo: true)
+        var first = try XCTUnwrap(state.profiles.first)
+        first.name = "Team"
+        first.hasCustomName = true
+        state.profiles[0] = first
+        let second = state.profiles[1]
+        let original = state.profiles
+
+        XCTAssertFalse(state.add(name: " ＴＥＡＭ ", kind: .openai, model: "", baseURL: "", secret: "sk-test"))
+        XCTAssertTrue(state.isError)
+        XCTAssertEqual(state.message, ProfileValidationError.duplicateName.localizedDescription)
+        XCTAssertEqual(state.profiles, original)
+        XCTAssertFalse(state.update(second, name: " team ", model: "", baseURL: "", secret: ""))
+        XCTAssertEqual(state.profiles, original)
+
+        // Editing the same profile without changing its name remains valid.
+        XCTAssertTrue(state.update(first, name: " Team ", model: "", baseURL: "", secret: ""))
+        XCTAssertEqual(state.profiles[0].name, "Team")
+
+        var official = state.profiles[1]
+        official.name = "work@example.invalid"
+        official.accountDisplayName = "官方名称"
+        official.hasCustomName = false
+        state.profiles[1] = official
+        XCTAssertFalse(state.update(state.profiles[0], name: "官方名称", model: "", baseURL: "", secret: ""))
+        XCTAssertEqual(state.message, ProfileValidationError.duplicateName.localizedDescription)
+    }
+
+    @MainActor
+    func testNamesIncludeCurrentUnsavedLoginAndAllowItsOwnName() throws {
+        let state = AppState(demo: true)
+        state.current.account = "current@example.invalid"
+        state.current.credentialFingerprint = "current-identity"
+        state.current.accountDisplayName = "当前官方名称"
+        let existing = state.profiles[1]
+        XCTAssertFalse(state.update(existing, name: "当前官方名称", model: "", baseURL: "", secret: ""))
+        XCTAssertFalse(state.add(name: "当前官方名称", kind: .openai, model: "", baseURL: "", secret: "sk-test"))
+
+        state.beginEditingCurrentAlias()
+        state.saveCurrentAlias("工作账号")
+        XCTAssertTrue(state.isError)
+        XCTAssertEqual(state.message, ProfileValidationError.duplicateName.localizedDescription)
+        XCTAssertNotNil(state.editingCurrent)
+        XCTAssertFalse(state.profiles.contains { $0.accountID == "current-identity" })
+
+        state.saveCurrentAlias("当前官方名称")
+        let profile = try XCTUnwrap(state.profiles.first { $0.accountID == "current-identity" })
+        XCTAssertEqual(profile.name, "当前官方名称")
+        XCTAssertFalse(state.isError)
     }
 
     @MainActor
@@ -232,6 +377,10 @@ final class CodexAccountManagerTests: XCTestCase {
         XCTAssertEqual(apiObject, ["OPENAI_API_KEY": apiKey])
         XCTAssertEqual(try store.load(id: accountID), String(decoding: auth, as: UTF8.self))
         XCTAssertEqual(try store.load(id: apiID), apiKey)
+        XCTAssertEqual(try store.loadAPIKey(id: apiID), apiKey)
+        XCTAssertThrowsError(try store.loadAPIKey(id: accountID)) {
+            guard case StoreError.invalidSecret = $0 else { return XCTFail("Unexpected error: \($0)") }
+        }
         XCTAssertEqual((try FileManager.default.attributesOfItem(atPath: store.directory.path)[.posixPermissions] as? NSNumber)?.intValue, 0o700)
         for file in [accountFile, apiFile] {
             XCTAssertEqual((try FileManager.default.attributesOfItem(atPath: file.path)[.posixPermissions] as? NSNumber)?.intValue, 0o600)
@@ -241,6 +390,76 @@ final class CodexAccountManagerTests: XCTestCase {
         try store.delete(id: accountID)
         XCTAssertThrowsError(try store.load(id: accountID)) { guard case StoreError.missingSecret = $0 else { return XCTFail("Unexpected error: \($0)") } }
         XCTAssertEqual(try store.load(id: apiID), "sk-fake-replacement")
+    }
+
+    @MainActor
+    func testSavedAPIKeyCanBeViewedAndChangedInDemoWithoutReadingRealCredentials() throws {
+        let state = AppState(demo: true)
+        let original = try XCTUnwrap(state.profiles.first { $0.kind == .openai })
+        XCTAssertEqual(try state.savedAPIKey(for: original.id), "sk-demo-only-not-real")
+        XCTAssertThrowsError(try state.savedAPIKey(for: state.profiles[0].id))
+
+        XCTAssertTrue(state.update(original, name: "新的密钥名称", model: "", baseURL: "", secret: ""))
+        let renamed = try XCTUnwrap(state.profiles.first { $0.id == original.id })
+        XCTAssertEqual(try state.savedAPIKey(for: renamed.id), "sk-demo-only-not-real")
+        XCTAssertTrue(state.update(renamed, name: renamed.name, model: "", baseURL: "", secret: "sk-demo-replacement"))
+        let updated = try XCTUnwrap(state.profiles.first { $0.id == original.id })
+        XCTAssertEqual(try state.savedAPIKey(for: updated.id), "sk-demo-replacement")
+
+        state.current.accountType = "apiKey"
+        state.current.credentialFingerprint = updated.secretFingerprint
+        XCTAssertEqual(try state.currentAPIKey(for: state.current), "sk-demo-replacement")
+        state.current.credentialFingerprint = "different-key"
+        XCTAssertThrowsError(try state.currentAPIKey(for: state.current))
+        state.remove(updated)
+        XCTAssertThrowsError(try state.savedAPIKey(for: updated.id))
+    }
+
+    @MainActor
+    func testSavedAPIKeyReadUsesTheMatchingCredentialFile() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("cam-saved-key-" + UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let suite = "local.cam.saved-key-test." + UUID().uuidString
+        let preferences = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { preferences.removePersistentDomain(forName: suite) }
+        preferences.set(root.path, forKey: "codexHome")
+        preferences.set(try fixture("mock_codex").path, forKey: "codexPath")
+        preferences.set(false, forKey: "diagnosticEnabled")
+        let store = ProfileStore(directory: root.appendingPathComponent("metadata"))
+        let key = "sk-fake-saved-only"
+        let profile = CodexProfile(id: UUID(), name: "saved", kind: .openai, model: nil, baseURL: nil, hasSecret: true,
+                                   secretFingerprint: CredentialSnapshot.fingerprint("api\0" + key))
+        try store.save([profile])
+        let files = SavedCredentialFiles(root: store.directory)
+        try files.save(key, id: profile.id)
+        let state = AppState(demo: false, storage: store, preferences: preferences, environment: ["CODEX_HOME": root.path])
+        XCTAssertEqual(try state.savedAPIKey(for: profile.id), key)
+        XCTAssertTrue(state.update(profile, name: "renamed", model: "", baseURL: "", secret: ""))
+        XCTAssertEqual(try files.loadAPIKey(id: profile.id), key)
+        try files.save("sk-fake-other", id: profile.id)
+        XCTAssertThrowsError(try state.savedAPIKey(for: profile.id)) {
+            guard case StoreError.invalidSecret = $0 else { return XCTFail("Unexpected error: \($0)") }
+        }
+    }
+
+    func testCurrentAPIKeyReadChecksIdentityAndEnvironment() throws {
+        let home = FileManager.default.temporaryDirectory.appendingPathComponent("cam-current-key-" + UUID().uuidString)
+        try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: home) }
+        let key = "sk-fake-current-only"
+        let data = try JSONSerialization.data(withJSONObject: ["OPENAI_API_KEY": key])
+        try data.write(to: home.appendingPathComponent("auth.json"))
+        let fingerprint = CredentialSnapshot.fingerprint("api\0" + key)
+        let service = CodexService(environment: ["CODEX_HOME": home.path])
+        XCTAssertEqual(try service.currentFileAPIKey(matching: fingerprint), key)
+        XCTAssertThrowsError(try service.currentFileAPIKey(matching: "wrong")) {
+            guard case CodexError.changedExternally = $0 else { return XCTFail("Unexpected error: \($0)") }
+        }
+        let managed = CodexService(environment: ["CODEX_HOME": home.path, "OPENAI_API_KEY": "managed"])
+        XCTAssertThrowsError(try managed.currentFileAPIKey(matching: fingerprint)) {
+            guard case CodexError.environmentOverride = $0 else { return XCTFail("Unexpected error: \($0)") }
+        }
     }
 
     func testCredentialFilesRejectSymlinksWithoutTouchingTheirTargets() throws {
@@ -860,16 +1079,21 @@ final class CodexAccountManagerTests: XCTestCase {
         XCTAssertEqual(try store.load().first?.lastQuota?.buckets.first?.windows.first?.remainingPercent, 80)
         try #"{"accountId":"team","rateLimits":{"primary":{"usedPercent":70,"windowDurationMins":300}}}"#.write(to: quotaFile, atomically: true, encoding: .utf8)
         state.refresh(retryMissingPlanTypes: true)
+        XCTAssertTrue(state.currentStatusLoading)
+        XCTAssertTrue(state.quotaRefreshInProgress)
         try await waitForRemaining(30)
+        XCTAssertFalse(state.quotaRefreshInProgress)
         XCTAssertEqual(try store.load().first?.lastQuota?.buckets.first?.windows.first?.remainingPercent, 30)
         XCTAssertGreaterThanOrEqual(try String(contentsOf: marker, encoding: .utf8).components(separatedBy: "read\n").count - 1, 2)
         XCTAssertEqual(try file.raw(), auth)
         let failureFlag = home.appendingPathComponent("mock_quota_error")
         try "".write(to: failureFlag, atomically: true, encoding: .utf8)
         state.refresh(retryMissingPlanTypes: true)
+        XCTAssertTrue(state.quotaRefreshInProgress)
         let failureDeadline = Date().addingTimeInterval(12)
         while !state.currentQuotaFailed && Date() < failureDeadline { try await Task.sleep(nanoseconds: 50_000_000) }
         XCTAssertTrue(state.currentQuotaFailed)
+        XCTAssertFalse(state.quotaRefreshInProgress)
         XCTAssertEqual(state.currentQuota?.buckets.first?.windows.first?.remainingPercent, 30)
         XCTAssertEqual(try store.load().first?.lastQuota?.buckets.first?.windows.first?.remainingPercent, 30)
         try FileManager.default.removeItem(at: failureFlag)

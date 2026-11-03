@@ -3,16 +3,16 @@ import SwiftUI
 
 @MainActor
 func makeStandardEditMenu() -> NSMenu {
-    let menu = NSMenu(title: "编辑")
-    menu.addItem(withTitle: "撤销", action: Selector(("undo:")), keyEquivalent: "z")
-    let redo = menu.addItem(withTitle: "重做", action: Selector(("redo:")), keyEquivalent: "z")
+    let menu = NSMenu(title: L("编辑"))
+    menu.addItem(withTitle: L("撤销"), action: Selector(("undo:")), keyEquivalent: "z")
+    let redo = menu.addItem(withTitle: L("重做"), action: Selector(("redo:")), keyEquivalent: "z")
     redo.keyEquivalentModifierMask = [.command, .shift]
     menu.addItem(.separator())
-    menu.addItem(withTitle: "剪切", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
-    menu.addItem(withTitle: "复制", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
-    menu.addItem(withTitle: "粘贴", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+    menu.addItem(withTitle: L("剪切"), action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+    menu.addItem(withTitle: L("复制"), action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+    menu.addItem(withTitle: L("粘贴"), action: #selector(NSText.paste(_:)), keyEquivalent: "v")
     menu.addItem(.separator())
-    menu.addItem(withTitle: "全选", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+    menu.addItem(withTitle: L("全选"), action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
     return menu
 }
 
@@ -26,16 +26,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
-        installApplicationMenu()
         let state = AppState(demo: CommandLine.arguments.contains("--demo"))
+        installApplicationMenu()
         NSApp.appearance = state.appearance.nsAppearance
-        state.onAppearanceChanged = { NSApp.appearance = $0.nsAppearance }
+        state.onAppearanceChanged = { [weak self] appearance in
+            NSApp.appearance = appearance.nsAppearance
+            self?.statusPopover?.appearance = NSApp.effectiveAppearance
+        }
+        state.onLanguageChanged = { [weak self] _ in self?.installApplicationMenu() }
         state.onActivationFailure = { message in
             let alert = NSAlert()
-            alert.messageText = "切换未完成"
+            alert.messageText = L("切换未完成")
             alert.informativeText = message
             alert.alertStyle = .warning
-            alert.addButton(withTitle: "好")
+            alert.addButton(withTitle: L("好"))
             alert.runModal()
         }
         state.onRequestActivation = { [weak self] profile, reauthenticate in
@@ -51,7 +55,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
         hosting.sizingOptions = []
         let popover = NSPopover()
         popover.behavior = .transient
-        popover.contentSize = NSSize(width: 320, height: 270)
+        popover.appearance = NSApp.effectiveAppearance
+        popover.contentSize = NSSize(width: StatusPanelLayout.width, height: StatusPanelLayout.height)
         popover.contentViewController = hosting
         statusPopover = popover
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -95,19 +100,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
         let mainMenu = NSMenu()
         let applicationItem = NSMenuItem()
         let applicationMenu = NSMenu()
-        let hide = applicationMenu.addItem(withTitle: "隐藏 \(Branding.appName)", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        let hide = applicationMenu.addItem(withTitle: L("隐藏 \(Branding.appName)"), action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
         hide.target = NSApp
-        let hideOthers = applicationMenu.addItem(withTitle: "隐藏其他应用", action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
+        let hideOthers = applicationMenu.addItem(withTitle: L("隐藏其他应用"), action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
         hideOthers.keyEquivalentModifierMask = [.command, .option]
         hideOthers.target = NSApp
-        let showAll = applicationMenu.addItem(withTitle: "显示全部", action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: "")
+        let showAll = applicationMenu.addItem(withTitle: L("显示全部"), action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: "")
         showAll.target = NSApp
         applicationMenu.addItem(.separator())
-        let quitItem = applicationMenu.addItem(withTitle: "退出 \(Branding.appName)", action: #selector(quit(_:)), keyEquivalent: "q")
+        let quitItem = applicationMenu.addItem(withTitle: L("退出 \(Branding.appName)"), action: #selector(quit(_:)), keyEquivalent: "q")
         quitItem.target = self
         applicationItem.submenu = applicationMenu
         mainMenu.addItem(applicationItem)
-        let editItem = NSMenuItem(title: "编辑", action: nil, keyEquivalent: "")
+        let editItem = NSMenuItem(title: L("编辑"), action: nil, keyEquivalent: "")
         editItem.submenu = makeStandardEditMenu()
         mainMenu.addItem(editItem)
         NSApp.mainMenu = mainMenu
@@ -120,6 +125,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
         } else {
             state?.refresh()
             NSApp.activate(ignoringOtherApps: true)
+            popover.appearance = NSApp.effectiveAppearance
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         }
     }
@@ -232,7 +238,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
             return
         }
         guard let appURL = running.first?.bundleURL else {
-            state.onActivationFailure?("无法确定 Codex 应用的位置，请先手动退出后切换。")
+            state.onActivationFailure?(L("无法确定 Codex 应用的位置，请先手动退出后切换。"))
             return
         }
         if askRestart(for: profile) == .alertFirstButtonReturn {
@@ -246,10 +252,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
     private func askRestart(for profile: CodexProfile) -> NSApplication.ModalResponse {
         NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
-        alert.messageText = "切换后需要重启 Codex"
-        alert.informativeText = "已选择“\(state?.profileDisplayName(profile) ?? profile.name)”。立即重启时，应用会先退出 Codex，再完成切换并重新打开。选择稍后，将在 Codex 退出后完成切换。请先结束其他 Codex CLI 会话。"
-        alert.addButton(withTitle: "立即重启")
-        alert.addButton(withTitle: "稍后")
+        alert.messageText = L("切换后需要重启 Codex")
+        alert.informativeText = L("已选择“\(state?.profileDisplayName(profile) ?? profile.name)”。立即重启时，应用会先退出 Codex，再完成切换并重新打开。选择稍后，将在 Codex 退出后完成切换。请先结束其他 Codex CLI 会话。")
+        alert.addButton(withTitle: L("立即重启"))
+        alert.addButton(withTitle: L("稍后"))
         return alert.runModal()
     }
 

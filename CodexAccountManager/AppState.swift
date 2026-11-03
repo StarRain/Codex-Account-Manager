@@ -7,7 +7,7 @@ enum AppAppearance: String, CaseIterable, Identifiable {
     case system, light, dark
     var id: String { rawValue }
     var title: String {
-        switch self { case .system: return "跟随系统"; case .light: return "浅色"; case .dark: return "深色" }
+        switch self { case .system: return L("跟随系统"); case .light: return L("浅色"); case .dark: return L("深色") }
     }
     var symbol: String {
         switch self { case .system: return "desktopcomputer"; case .light: return "sun.max"; case .dark: return "moon" }
@@ -46,12 +46,14 @@ final class AppState: ObservableObject {
     @Published private(set) var loggingEnabled = true
     @Published private(set) var logLevel: DiagnosticLevel = .info
     @Published private(set) var appearance: AppAppearance = .system
+    @Published private(set) var language: AppLanguage = .simplifiedChinese
     @Published private(set) var launchAtLogin = false
     @Published private(set) var silentLaunch = false
     @Published private(set) var closeToMenuBar = true
     @Published private(set) var pendingProfileID: UUID?
     @Published private(set) var pendingReauthentication = false
     @Published private(set) var currentQuota: AccountQuota?
+    @Published private(set) var currentStatusLoading = false
     @Published private(set) var currentQuotaLoading = false
     @Published private(set) var currentQuotaFailed = false
     @Published private(set) var quotaByAccount: [String: AccountQuota] = [:]
@@ -59,6 +61,7 @@ final class AppState: ObservableObject {
     var onActivationFailure: ((String) -> Void)?
     var onRequestActivation: ((CodexProfile, Bool) -> Void)?
     var onAppearanceChanged: ((AppAppearance) -> Void)?
+    var onLanguageChanged: ((AppLanguage) -> Void)?
 
     enum Page { case menu, manage, add, settings }
     let demo: Bool
@@ -76,6 +79,7 @@ final class AppState: ObservableObject {
     private var quotaGeneration = 0
     private var quotaLastAttempt: Date?
     private var loginCancellation: LoginCancellation?
+    private var demoAPIKeys: [UUID: String] = [:]
 
     init(demo: Bool = false, storage: ProfileStore? = nil, preferences: UserDefaults = .standard,
          environment: [String: String] = ProcessInfo.processInfo.environment) {
@@ -92,6 +96,9 @@ final class AppState: ObservableObject {
         let enabled = demo ? false : (preferences.object(forKey: "diagnosticEnabled") as? Bool ?? true)
         let level = DiagnosticLevel(rawValue: preferences.string(forKey: "diagnosticLevel") ?? "info") ?? .info
         self.demo = demo; self.storage = selectedStore; self.preferences = preferences
+        let selectedLanguage = demo ? AppLanguage.simplifiedChinese : (AppLanguage(rawValue: preferences.string(forKey: "language") ?? "") ?? .simplifiedChinese)
+        language = selectedLanguage
+        Localization.select(selectedLanguage)
         self.launchEnvironment = environment
         self.detectedCodexHome = CodexHome.resolve(environment: environment).path
         self.diagnostics = DiagnosticLog(directory: selectedStore.directory, enabled: enabled, level: level)
@@ -116,6 +123,7 @@ final class AppState: ObservableObject {
                 CodexProfile(id: UUID(uuidString: "f711f011-7a76-48a1-ac10-a5a752ba3cd3")!, name: "工作账号", kind: .chatgpt, model: nil, baseURL: nil, hasSecret: true, accountEmail: "work@example.invalid", accountID: "demo-work", accountPlanType: "business"),
                 CodexProfile(id: UUID(uuidString: "f711f011-7a76-48a1-ac10-a5a752ba3cd2")!, name: "工作 API Key", kind: .openai, model: nil, baseURL: nil, hasSecret: true),
             ]
+            demoAPIKeys[profiles[2].id] = "sk-demo-only-not-real"
             current = CurrentCodex(account: "demo@example.invalid", accountType: "chatgpt", provider: "openai", model: "默认", configVersion: nil, configAvailable: true, accountAvailable: true, credentialStore: "file", credentialFingerprint: "demo-account", accountPlanType: "plus")
             let now = Date()
             currentQuota = AccountQuota(buckets: [QuotaBucket(id: "codex", title: nil, windows: [
@@ -137,7 +145,7 @@ final class AppState: ObservableObject {
                         quotaByAccount[identity] = quota
                     }
                 }
-            } catch { setMessage("无法读取已保存的配置，请检查本机文件。", error: true); diagnostics.record(.settingsFailed, level: .error) }
+            } catch { setMessage(L("无法读取已保存的配置，请检查本机文件。"), error: true); diagnostics.record(.settingsFailed, level: .error) }
             refresh()
         }
     }
@@ -146,6 +154,15 @@ final class AppState: ObservableObject {
         appearance = value
         if !demo { preferences.set(value.rawValue, forKey: "appearance") }
         onAppearanceChanged?(value)
+    }
+
+    func setLanguage(_ value: AppLanguage) {
+        guard value != language else { return }
+        Localization.select(value)
+        language = value
+        if !demo { preferences.set(value.rawValue, forKey: "language") }
+        if !busy { setMessage("") }
+        onLanguageChanged?(value)
     }
 
     func setSilentLaunch(_ enabled: Bool) {
@@ -165,12 +182,12 @@ final class AppState: ObservableObject {
             if enabled { try service.register() } else { try service.unregister() }
             launchAtLogin = service.status == .enabled || service.status == .requiresApproval
             if enabled && service.status == .requiresApproval {
-                setMessage("请在系统设置的登录项中允许此应用开机启动。")
+                setMessage(L("请在系统设置的登录项中允许此应用开机启动。"))
             }
         } catch {
             let status = SMAppService.mainApp.status
             launchAtLogin = status == .enabled || status == .requiresApproval
-            setMessage("无法更改开机自启，请检查系统设置中的登录项。", error: true)
+            setMessage(L("无法更改开机自启，请检查系统设置中的登录项。"), error: true)
         }
     }
 
@@ -187,7 +204,7 @@ final class AppState: ObservableObject {
     }
 
     func setPreserveSharedHistory(_ enabled: Bool) {
-        guard !demo else { preserveSharedHistory = enabled; setMessage("演示模式不会保存设置。"); return }
+        guard !demo else { preserveSharedHistory = enabled; setMessage(L("演示模式不会保存设置。")); return }
         guard !busy, current.configAvailable else { return }
         if current.usesSharedOfficialProvider {
             let home = service().fileCredentials().home.standardizedFileURL.resolvingSymlinksInPath().path
@@ -196,11 +213,11 @@ final class AppState: ObservableObject {
         preserveSharedHistory = enabled
         preferences.set(enabled, forKey: "preserveSharedHistory")
         diagnostics.record(.settingsSaved)
-        setMessage("会话设置已保存，将在下次切换账号时生效。")
+        setMessage(L("会话设置已保存，将在下次切换账号时生效。"))
     }
 
     func setDiagnostics(enabled: Bool, level: DiagnosticLevel) {
-        if demo { loggingEnabled = enabled; logLevel = level; setMessage("演示模式不会保存设置。"); return }
+        if demo { loggingEnabled = enabled; logLevel = level; setMessage(L("演示模式不会保存设置。")); return }
         if loggingEnabled && !enabled { diagnostics.record(.loggingDisabled) }
         let wasEnabled = loggingEnabled
         loggingEnabled = enabled; logLevel = level
@@ -211,11 +228,11 @@ final class AppState: ObservableObject {
     }
 
     func openDiagnosticLog() {
-        guard !demo else { setMessage("演示模式不会打开真实日志。"); return }
+        guard !demo else { setMessage(L("演示模式不会打开真实日志。")); return }
         do {
             let file = try diagnostics.fileForOpening()
             guard NSWorkspace.shared.open(file) else { throw StoreError.invalidDirectory }
-        } catch { setMessage("无法打开诊断日志，请检查存储目录。", error: true) }
+        } catch { setMessage(L("无法打开诊断日志，请检查存储目录。"), error: true) }
     }
 
     func setMessage(_ text: String, error: Bool = false) { message = text; isError = error }
@@ -230,7 +247,7 @@ final class AppState: ObservableObject {
         pendingProfileID = profile.id; pendingReauthentication = reauthenticate
         preferences.set(profile.id.uuidString, forKey: "pendingProfileID")
         preferences.set(reauthenticate, forKey: "pendingReauthentication")
-        setMessage("已暂存 \(profileDisplayName(profile))。退出 Codex 后自动切换。")
+        setMessage(L("已暂存 \(profileDisplayName(profile))。退出 Codex 后自动切换。"))
     }
 
     func cancelPending() {
@@ -265,6 +282,8 @@ final class AppState: ObservableObject {
         QuotaPresentation(value: currentQuota, isLoading: currentQuotaLoading, failed: currentQuotaFailed, isCached: false)
     }
 
+    var quotaRefreshInProgress: Bool { currentStatusLoading || currentQuotaLoading }
+
     func quotaPresentation(for profile: CodexProfile) -> QuotaPresentation {
         if matchesCurrentLogin(profile) { return currentQuotaPresentation }
         let quota = profile.accountID.flatMap { quotaByAccount[$0] }
@@ -272,6 +291,20 @@ final class AppState: ObservableObject {
     }
 
     var currentHasProfile: Bool { profiles.contains(where: matchesCurrentLogin) }
+
+    var currentLoginDisplayItem: CurrentLoginItem? {
+        guard let item = current.currentLoginItem else { return nil }
+        guard let profile = profiles.first(where: matchesCurrentLogin) else { return item }
+        let name = profileDisplayName(profile)
+        let email: String? = {
+            guard item.kind == .chatgpt else { return nil }
+            let value = (current.account ?? profile.accountEmail)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            return value.flatMap { $0.isEmpty || $0.caseInsensitiveCompare(name) == .orderedSame ? nil : $0 }
+        }()
+        return CurrentLoginItem(kind: item.kind, name: name,
+                                accountPlanType: item.kind == .chatgpt ? accountPlanType(for: profile) : nil,
+                                accountEmail: email)
+    }
 
     func currentLoginWithoutProfile(for kind: ProfileKind) -> CurrentLoginItem? {
         guard !currentHasProfile, let item = current.currentLoginItem, item.kind == kind else { return nil }
@@ -285,6 +318,52 @@ final class AppState: ObservableObject {
         return true
     }
 
+    func savedAPIKey(for id: UUID) throws -> String {
+        guard let profile = profiles.first(where: { $0.id == id }), profile.kind == .openai, profile.hasSecret else {
+            throw StoreError.missingSecret
+        }
+        let key: String
+        if demo {
+            guard let value = demoAPIKeys[id] else { throw StoreError.missingSecret }
+            key = value
+        } else {
+            key = try credentials.loadAPIKey(id: id)
+        }
+        if let fingerprint = profile.secretFingerprint, CredentialSnapshot.fingerprint("api\0" + key) != fingerprint {
+            throw StoreError.invalidSecret
+        }
+        return key
+    }
+
+    func currentAPIKey(for selected: CurrentCodex) throws -> String {
+        guard selected.accountAvailable, selected.accountType == "apiKey", let fingerprint = selected.credentialFingerprint else {
+            throw CodexError.invalidCredentials
+        }
+        guard selected.credentialStore == "file" else { throw CodexError.unsupportedCredentialStore }
+        if demo {
+            guard let profile = profiles.first(where: { $0.kind == .openai && $0.secretFingerprint == fingerprint }),
+                  let key = demoAPIKeys[profile.id] else { throw StoreError.missingSecret }
+            return key
+        }
+        return try service().currentFileAPIKey(matching: fingerprint)
+    }
+
+    private func sameName(_ lhs: String, _ rhs: String) -> Bool {
+        lhs.trimmingCharacters(in: .whitespacesAndNewlines)
+            .compare(rhs.trimmingCharacters(in: .whitespacesAndNewlines), options: [.caseInsensitive, .widthInsensitive]) == .orderedSame
+    }
+
+    private func ensureUniqueName(_ name: String, excludingProfileID: UUID? = nil, excludingCurrent: Bool = false) throws {
+        let duplicate = profiles.contains { profile in
+            profile.id != excludingProfileID && shouldDisplayProfile(profile) &&
+                !(excludingCurrent && matchesCurrentLogin(profile)) && sameName(name, profileDisplayName(profile))
+        }
+        if duplicate { throw ProfileValidationError.duplicateName }
+        if !excludingCurrent, !currentHasProfile, let currentName = current.currentLoginItem?.name, sameName(name, currentName) {
+            throw ProfileValidationError.duplicateName
+        }
+    }
+
     func beginEditingCurrentAlias() {
         guard !busy, current.currentLoginItem != nil, current.credentialFingerprint != nil else { return }
         editing = nil; editingCurrent = current; setMessage(""); page = .add
@@ -293,7 +372,12 @@ final class AppState: ObservableObject {
     func saveCurrentAlias(_ name: String) {
         guard !busy, let selected = editingCurrent, let fingerprint = selected.credentialFingerprint else { return }
         let alias: String
-        do { alias = try ProfileValidator.validated(name: name, kind: .chatgpt, model: "", baseURL: "", secret: "").0 }
+        do {
+            alias = try ProfileValidator.validated(name: name, kind: .chatgpt, model: "", baseURL: "", secret: "").0
+            if let currentName = selected.currentLoginItem?.name, !sameName(alias, currentName) {
+                try ensureUniqueName(alias, excludingCurrent: true)
+            }
+        }
         catch { setMessage(error.localizedDescription, error: true); return }
         if demo {
             do {
@@ -302,7 +386,7 @@ final class AppState: ObservableObject {
             } catch { setMessage(error.localizedDescription, error: true) }
             return
         }
-        busy = true; refreshGeneration += 1; setMessage("正在保存别名…")
+        busy = true; invalidateCurrentRefresh(); setMessage(L("正在保存别名…"))
         let service = service(), storage = storage, startingProfiles = profiles
         DispatchQueue.global(qos: .userInitiated).async {
             var next = startingProfiles
@@ -336,6 +420,7 @@ final class AppState: ObservableObject {
         recoverMissingAccountNames()
         refreshGeneration += 1
         let generation = refreshGeneration
+        currentStatusLoading = true
         let service = service()
         diagnostics.record(.refreshStarted, level: .trace)
         refreshGroup.enter()
@@ -343,7 +428,9 @@ final class AppState: ObservableObject {
             defer { self.refreshGroup.leave() }
             let result = Result { try service.readCurrent() }
             DispatchQueue.main.async {
-                guard !self.busy, self.refreshGeneration == generation else { return }
+                guard self.refreshGeneration == generation else { return }
+                self.currentStatusLoading = false
+                guard !self.busy else { return }
                 switch result {
                 case .success(let value):
                     self.current = value
@@ -361,6 +448,11 @@ final class AppState: ObservableObject {
                 }
             }
         }
+    }
+
+    private func invalidateCurrentRefresh() {
+        refreshGeneration += 1
+        currentStatusLoading = false
     }
 
     private func clearCurrentQuota() {
@@ -471,7 +563,7 @@ final class AppState: ObservableObject {
     }
 
     func savePreferences(home: String, path: String, directory: String) {
-        guard !demo else { setMessage("演示模式不会保存设置。"); return }
+        guard !demo else { setMessage(L("演示模式不会保存设置。")); return }
         guard !busy else { return }
         do {
             let homeValue = home.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -489,7 +581,7 @@ final class AppState: ObservableObject {
             preferences.set(codexPath, forKey: "codexPath")
             diagnostics.configure(directory: nextStore.directory, enabled: loggingEnabled, level: logLevel)
             diagnostics.record(.settingsSaved)
-            page = .menu; setMessage(storageChanged ? "应用目录已保存，原配置文件保留。" : "目录设置已保存。"); refresh()
+            page = .menu; setMessage(storageChanged ? L("应用目录已保存，原配置文件保留。") : L("目录设置已保存。")); refresh()
         } catch {
             diagnostics.record(.settingsFailed, level: .error, reason: .classify(error))
             setMessage(error.localizedDescription, error: true)
@@ -498,30 +590,33 @@ final class AppState: ObservableObject {
 
     func add(name: String, kind: ProfileKind, model: String, baseURL: String, secret: String) -> Bool {
         do {
-            guard kind != .chatgpt else { setMessage("请先完成官方账号登录。", error: true); return false }
+            guard kind != .chatgpt else { setMessage(L("请先完成官方账号登录。"), error: true); return false }
             let (title, selectedModel, address, key) = try ProfileValidator.validated(name: name, kind: kind, model: model, baseURL: baseURL, secret: secret)
+            try ensureUniqueName(title)
             let profile = CodexProfile(id: UUID(), name: title, kind: kind, model: selectedModel, baseURL: address, hasSecret: key != nil,
                                        secretFingerprint: kind == .openai ? key.map { CredentialSnapshot.fingerprint("api\0" + $0) } : nil)
             if !demo {
                 if let key { try credentials.save(key, id: profile.id) }
                 do { try storage.save(profiles + [profile]) }
                 catch { if key != nil { try? credentials.delete(id: profile.id) }; throw error }
+            } else if kind == .openai, let key {
+                demoAPIKeys[profile.id] = key
             }
             profiles.append(profile); page = .manage
             if !demo { diagnostics.record(.profileSaved) }
-            setMessage(demo ? "已添加模拟配置。" : "配置已保存。")
+            setMessage(demo ? L("已添加模拟配置。") : L("配置已保存。"))
             return true
         } catch { if !demo { diagnostics.record(.profileSaveFailed, level: .error, reason: .classify(error)) }; setMessage(error.localizedDescription, error: true); return false }
     }
 
     func beginChatGPTLogin(_ method: ChatGPTLoginMethod, openBrowser: Bool = true) {
         guard !busy, page == .add, editing == nil else { return }
-        guard !demo else { setMessage("演示模式不会添加真实账号。", error: true); return }
-        busy = true; refreshGeneration += 1
+        guard !demo else { setMessage(L("演示模式不会添加真实账号。"), error: true); return }
+        busy = true; invalidateCurrentRefresh()
         let cancellation = LoginCancellation()
         loginCancellation = cancellation
         accountLogin = AccountLoginProgress(method: method)
-        setMessage("正在启动\(method.title)…")
+        setMessage(L("正在启动\(method.title)…"))
         let service = service(), keys = credentials, storage = storage, startingProfiles = profiles, refreshGroup = refreshGroup
         DispatchQueue.global(qos: .userInitiated).async {
             var next = startingProfiles
@@ -530,18 +625,18 @@ final class AppState: ObservableObject {
                 let account = try service.authorizeAdditionalChatGPT(method: method, cancellation: cancellation, onAuthenticated: {
                     DispatchQueue.main.async {
                         guard self.loginCancellation === cancellation, !cancellation.isCancelled else { return }
-                        self.setMessage("登录成功，正在读取账号信息…")
+                        self.setMessage(L("登录成功，正在读取账号信息…"))
                     }
                 }) { instructions in
                     DispatchQueue.main.sync {
                         guard self.loginCancellation === cancellation, !cancellation.isCancelled else { return false }
                         self.accountLogin?.instructions = instructions
                         if !openBrowser {
-                            self.setMessage("请复制登录链接，在要使用的浏览器中打开并完成登录。")
+                            self.setMessage(L("请复制登录链接，在要使用的浏览器中打开并完成登录。"))
                         } else if NSWorkspace.shared.open(instructions.url) {
-                            self.setMessage(method == .browser ? "请在浏览器登录要添加的账号。" : "请在授权网页登录要添加的账号并输入设备代码。")
+                            self.setMessage(method == .browser ? L("请在浏览器登录要添加的账号。") : L("请在授权网页登录要添加的账号并输入设备代码。"))
                         } else {
-                            self.setMessage("未能自动打开浏览器，请打开或复制登录链接。", error: true)
+                            self.setMessage(L("未能自动打开浏览器，请打开或复制登录链接。"), error: true)
                         }
                         // Keep the authorization alive if the user chooses a
                         // different browser or the default browser fails to open.
@@ -552,7 +647,7 @@ final class AppState: ObservableObject {
                 let maySave = DispatchQueue.main.sync {
                     guard self.loginCancellation === cancellation, !cancellation.isCancelled else { return false }
                     self.accountLogin?.isSaving = true
-                    self.setMessage("登录成功，正在保存账号…")
+                    self.setMessage(L("登录成功，正在保存账号…"))
                     return true
                 }
                 guard maySave else { throw CodexError.loginCancelled }
@@ -569,11 +664,11 @@ final class AppState: ObservableObject {
                     if let quota = account.quota { self.quotaByAccount[account.credentials.fingerprint] = quota }
                     self.page = .manage
                     self.diagnostics.record(.profileSaved)
-                    self.setMessage("账号已添加。")
+                    self.setMessage(L("账号已添加。"))
                     self.refresh()
                 case .failure(let error):
                     if case CodexError.loginCancelled = error {
-                        self.page = .manage; self.setMessage("已取消添加账号。")
+                        self.page = .manage; self.setMessage(L("已取消添加账号。"))
                     } else {
                         self.diagnostics.record(.profileSaveFailed, level: .error, reason: .classify(error))
                         self.setMessage(error.localizedDescription, error: true)
@@ -587,7 +682,7 @@ final class AppState: ObservableObject {
         guard let cancellation = loginCancellation, accountLogin?.isSaving != true else { return }
         cancellation.cancel()
         accountLogin?.isCancelling = true
-        setMessage("正在取消登录…")
+        setMessage(L("正在取消登录…"))
     }
 
     func update(_ existing: CodexProfile, name: String, model: String, baseURL: String, secret: String) -> Bool {
@@ -596,6 +691,9 @@ final class AppState: ObservableObject {
             let validationKey = existing.kind == .openai && (existing.hasSecret || matchesCurrentLogin(existing)) && replacementSecret.isEmpty ? "existing-key" : replacementSecret
             let (title, selectedModel, address, _) = try ProfileValidator.validated(name: name, kind: existing.kind, model: model, baseURL: baseURL, secret: validationKey)
             guard let index = profiles.firstIndex(where: { $0.id == existing.id }) else { throw StoreError.missingSecret }
+            if !sameName(title, profileDisplayName(profiles[index])) {
+                try ensureUniqueName(title, excludingProfileID: existing.id)
+            }
             let updated = CodexProfile(id: existing.id, name: title, kind: existing.kind, model: selectedModel,
                                        baseURL: address, hasSecret: existing.hasSecret || !replacementSecret.isEmpty,
                                        accountEmail: existing.accountEmail, accountID: existing.accountID,
@@ -615,6 +713,8 @@ final class AppState: ObservableObject {
                     }
                     throw error
                 }
+            } else if existing.kind == .openai && !replacementSecret.isEmpty {
+                demoAPIKeys[existing.id] = replacementSecret
             }
             profiles = next; editing = nil; page = .manage
             if !demo { diagnostics.record(.profileSaved) }
@@ -625,10 +725,10 @@ final class AppState: ObservableObject {
 
     func remove(_ profile: CodexProfile) {
         guard !busy else { return }
-        guard !isCurrent(profile) else { setMessage("当前使用中的配置不能删除，请先切换到其他配置。", error: true); return }
+        guard !isCurrent(profile) else { setMessage(L("当前使用中的配置不能删除，请先切换到其他配置。"), error: true); return }
         let remaining = profiles.filter { $0.id != profile.id }
-        if demo { profiles = remaining; discardUnreferencedQuota(profile, remaining: remaining); setMessage("模拟配置已移除。"); return }
-        busy = true; refreshGeneration += 1; setMessage("正在移除配置…")
+        if demo { profiles = remaining; demoAPIKeys.removeValue(forKey: profile.id); discardUnreferencedQuota(profile, remaining: remaining); setMessage(L("模拟配置已移除。")); return }
+        busy = true; invalidateCurrentRefresh(); setMessage(L("正在移除配置…"))
         let service = service(), storage = storage, keys = credentials
         DispatchQueue.global(qos: .userInitiated).async {
             var metadataRemoved = false
@@ -645,8 +745,8 @@ final class AppState: ObservableObject {
                     if self.pendingProfileID == profile.id { self.cancelPending() }
                 }
                 switch result {
-                case .success: self.diagnostics.record(.profileRemoved); self.setMessage("配置已移除。")
-                case .failure(let error): self.diagnostics.record(.profileRemoveFailed, level: .error, reason: .classify(error)); self.setMessage("未能完整移除配置：" + error.localizedDescription, error: true)
+                case .success: self.diagnostics.record(.profileRemoved); self.setMessage(L("配置已移除。"))
+                case .failure(let error): self.diagnostics.record(.profileRemoveFailed, level: .error, reason: .classify(error)); self.setMessage(L("未能完整移除配置：") + error.localizedDescription, error: true)
                 }
                 self.refresh()
             }
@@ -661,21 +761,21 @@ final class AppState: ObservableObject {
 
     func activate(_ profile: CodexProfile, reauthenticate: Bool = false, closing applications: [NSRunningApplication] = [], reopenURL: URL? = nil, fromPending: Bool = false) {
         guard !busy else { return }
-        if demo { setMessage("演示模式不会修改 Codex 配置或登录状态。"); return }
+        if demo { setMessage(L("演示模式不会修改 Codex 配置或登录状态。")); return }
         if applications.isEmpty && NSRunningApplication.runningApplications(withBundleIdentifier: "com.openai.codex").contains(where: { !$0.isTerminated }) {
             let message = CodexError.codexStillRunning.localizedDescription
             setMessage(message, error: true); onActivationFailure?(message); return
         }
         busy = true
         diagnostics.record(.switchStarted)
-        refreshGeneration += 1
+        invalidateCurrentRefresh()
         let needsLogin = profile.kind == .chatgpt && (!profile.hasSecret || reauthenticate)
         let cancellation = needsLogin ? LoginCancellation() : nil
         if let cancellation {
             loginCancellation = cancellation
             accountLogin = AccountLoginProgress(method: .browser)
         }
-        setMessage(needsLogin ? "正在准备官方浏览器登录…" : "正在切换默认配置…")
+        setMessage(needsLogin ? L("正在准备官方浏览器登录…") : L("正在切换默认配置…"))
         let service = service(); let keys = credentials; let storage = storage; let startingProfiles = profiles; let cachedQuotas = quotaByAccount; let refreshGroup = refreshGroup
         DispatchQueue.global(qos: .userInitiated).async {
             var next = startingProfiles
@@ -700,16 +800,16 @@ final class AppState: ObservableObject {
                                                        onAuthenticated: {
                         DispatchQueue.main.async {
                             guard self.loginCancellation === cancellation, !cancellation.isCancelled else { return }
-                            self.setMessage("登录成功，正在核对账号…")
+                            self.setMessage(L("登录成功，正在核对账号…"))
                         }
                     }, onInstructions: { instructions in
                         DispatchQueue.main.sync {
                             guard self.loginCancellation === cancellation, !cancellation.isCancelled else { return false }
                             self.accountLogin?.instructions = instructions
                             if NSWorkspace.shared.open(instructions.url) {
-                                self.setMessage("请在浏览器登录所选账号。")
+                                self.setMessage(L("请在浏览器登录所选账号。"))
                             } else {
-                                self.setMessage("未能自动打开浏览器，请复制登录链接。", error: true)
+                                self.setMessage(L("未能自动打开浏览器，请复制登录链接。"), error: true)
                             }
                             return true
                         }
@@ -719,7 +819,7 @@ final class AppState: ObservableObject {
                             guard self.loginCancellation === cancellation, !cancellation.isCancelled else { return false }
                             guard !NSRunningApplication.runningApplications(withBundleIdentifier: "com.openai.codex").contains(where: { !$0.isTerminated }) else { return false }
                             self.accountLogin?.isSaving = true
-                            self.setMessage("账号已核对，正在保存并切换…")
+                            self.setMessage(L("账号已核对，正在保存并切换…"))
                             return true
                         }
                         guard maySave else { throw cancellation.isCancelled ? CodexError.loginCancelled : CodexError.codexStillRunning }
@@ -735,7 +835,7 @@ final class AppState: ObservableObject {
             DispatchQueue.main.async {
                 if attemptedClose, let reopenURL, applications.contains(where: \.isTerminated) {
                     NSWorkspace.shared.openApplication(at: reopenURL, configuration: NSWorkspace.OpenConfiguration()) { _, error in
-                        if error != nil { DispatchQueue.main.async { self.onActivationFailure?("无法自动重新打开 Codex，请从应用程序中手动打开。") } }
+                        if error != nil { DispatchQueue.main.async { self.onActivationFailure?(L("无法自动重新打开 Codex，请从应用程序中手动打开。")) } }
                     }
                 }
                 self.profiles = updatedProfiles
@@ -745,10 +845,10 @@ final class AppState: ObservableObject {
                 case .success:
                     self.diagnostics.record(.switchFinished)
                     if fromPending && self.pendingProfileID == profile.id { self.cancelPending() }
-                    self.setMessage(reopenURL == nil ? "已切换。重新打开 Codex 后生效。" : "已切换，正在重新打开 Codex。")
+                    self.setMessage(reopenURL == nil ? L("已切换。重新打开 Codex 后生效。") : L("已切换，正在重新打开 Codex。"))
                 case .failure(let error):
                     if case CodexError.loginCancelled = error {
-                        self.setMessage("已取消重新登录。")
+                        self.setMessage(L("已取消重新登录。"))
                     } else {
                         self.diagnostics.record(.switchFailed, level: .error, reason: .classify(error))
                         self.setMessage(error.localizedDescription, error: true)
@@ -846,9 +946,9 @@ enum NewChatGPTAccountError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .alreadySaved:
-            return "该账号已添加。请登录其他账号；如需更新登录，请在账号菜单中选择“重新登录”。"
+            return L("该账号已添加。请登录其他账号；如需更新登录，请在账号菜单中选择“重新登录”。")
         case .alreadyCurrent:
-            return "这是当前正在使用的账号，请登录其他账号。"
+            return L("这是当前正在使用的账号，请登录其他账号。")
         }
     }
 }

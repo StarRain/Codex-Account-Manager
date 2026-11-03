@@ -10,12 +10,12 @@ enum StoreError: LocalizedError {
     case credentialFile
     var errorDescription: String? {
         switch self {
-        case .missingSecret: return "未找到此配置的密钥，请重新保存。"
-        case .invalidSecret: return "保存的密钥无法读取，请重新保存。"
-        case .invalidDirectory: return "请输入有效的绝对目录路径。"
-        case .destinationHasProfiles: return "目标目录已有不同的配置，请选择空目录，避免覆盖。"
-        case .destinationHasCredentials: return "目标目录已有不同的凭据文件，请选择其他目录，避免覆盖。"
-        case .credentialFile: return "无法安全读写凭据文件，请检查应用配置目录的权限。"
+        case .missingSecret: return L("未找到此配置的密钥，请重新保存。")
+        case .invalidSecret: return L("保存的密钥无法读取，请重新保存。")
+        case .invalidDirectory: return L("请输入有效的绝对目录路径。")
+        case .destinationHasProfiles: return L("目标目录已有不同的配置，请选择空目录，避免覆盖。")
+        case .destinationHasCredentials: return L("目标目录已有不同的凭据文件，请选择其他目录，避免覆盖。")
+        case .credentialFile: return L("无法安全读写凭据文件，请检查应用配置目录的权限。")
         }
     }
 }
@@ -191,6 +191,16 @@ struct SavedCredentialFiles: CredentialStoring {
         try withDirectory { directoryFD in
             guard let data = try read(filename(id), from: directoryFD) else { throw StoreError.missingSecret }
             return try decoded(data)
+        }
+    }
+
+    func loadAPIKey(id: UUID) throws -> String {
+        try withDirectory { directoryFD in
+            guard let data = try read(filename(id), from: directoryFD) else { throw StoreError.missingSecret }
+            guard let snapshot = try? CredentialSnapshot(bytes: data), snapshot.kind == .openai,
+                  let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let key = object["OPENAI_API_KEY"] as? String, !key.isEmpty else { throw StoreError.invalidSecret }
+            return key
         }
     }
 

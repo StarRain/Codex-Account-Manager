@@ -6,9 +6,9 @@ private enum PanelSection: CaseIterable, Hashable {
 
     var title: String {
         switch self {
-        case .overview: return "全部"
-        case .chatgpt: return "官方账号"
-        case .openai: return "官方 API Key"
+        case .overview: return L("全部")
+        case .chatgpt: return L("官方账号")
+        case .openai: return L("官方 API Key")
         }
     }
     var icon: String {
@@ -20,9 +20,9 @@ private enum PanelSection: CaseIterable, Hashable {
     }
     var subtitle: String {
         switch self {
-        case .overview: return "管理账号与 API Key"
-        case .chatgpt: return "管理已保存的官方账号"
-        case .openai: return "管理已保存的 API Key"
+        case .overview: return L("管理账号与 API Key")
+        case .chatgpt: return L("管理已保存的官方账号")
+        case .openai: return L("管理已保存的 API Key")
         }
     }
     var kinds: [ProfileKind] {
@@ -40,16 +40,16 @@ private enum PanelSection: CaseIterable, Hashable {
 private enum SettingsSection: CaseIterable, Hashable {
     case general, config, about
     var title: String {
-        switch self { case .general: return "通用"; case .config: return "配置"; case .about: return "关于" }
+        switch self { case .general: return L("通用"); case .config: return L("配置"); case .about: return L("关于") }
     }
     var icon: String {
         switch self { case .general: return "slider.horizontal.3"; case .config: return "folder"; case .about: return "info.circle" }
     }
     var subtitle: String {
         switch self {
-        case .general: return "个性化外观与启动方式"
-        case .config: return "管理存储位置与诊断日志"
-        case .about: return "应用信息与使用说明"
+        case .general: return L("个性化外观与启动方式")
+        case .config: return L("管理存储位置与诊断日志")
+        case .about: return L("应用信息与使用说明")
         }
     }
 }
@@ -106,6 +106,13 @@ private struct PanelMenuAnchorKey: PreferenceKey {
     }
 }
 
+private struct LanguageMenuAnchorKey: PreferenceKey {
+    static var defaultValue: Anchor<CGRect>? = nil
+    static func reduce(value: inout Anchor<CGRect>?, nextValue: () -> Anchor<CGRect>?) {
+        value = nextValue() ?? value
+    }
+}
+
 private struct SystemMenuBackground: NSViewRepresentable {
     func makeNSView(context: Context) -> NSVisualEffectView {
         let view = NSVisualEffectView()
@@ -149,6 +156,7 @@ private struct PrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label.font(.system(size: 13, weight: .medium))
             .padding(.horizontal, 14).frame(height: 34)
+            .contentShape(Rectangle())
             .foregroundStyle(.white)
             .background(PanelColors.action.opacity(configuration.isPressed ? 0.8 : 1), in: RoundedRectangle(cornerRadius: 8))
             .opacity(isEnabled ? 1 : 0.5)
@@ -160,9 +168,10 @@ private struct OutlineButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label.font(.system(size: 13, weight: .medium))
             .padding(.horizontal, 12).frame(minHeight: 34)
+            .contentShape(Rectangle())
             .foregroundStyle(PanelColors.text)
             .background(configuration.isPressed ? PanelColors.subtle : PanelColors.card, in: RoundedRectangle(cornerRadius: 8))
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(PanelColors.borderStrong, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(PanelColors.borderStrong, lineWidth: 1).allowsHitTesting(false))
             .opacity(isEnabled ? 1 : 0.5)
     }
 }
@@ -231,7 +240,7 @@ private struct SwitchAccountButton: View {
         Button(action: action) {
             HStack(spacing: 0) {
                 ActionIcon(image: Branding.switchAccountIcon, fallback: "person.crop.circle.badge.arrow.right", size: 16)
-                Text("切换到【\(name)】")
+                Text(L("切换到【\(name)】"))
                     .font(.system(size: 11, weight: .medium)).foregroundStyle(PanelColors.text)
                     .lineLimit(1).truncationMode(.middle).padding(.leading, 7)
                     .frame(maxWidth: hovering ? 200 : 0, alignment: .leading)
@@ -246,7 +255,7 @@ private struct SwitchAccountButton: View {
         .onHover { inside in withAnimation(.easeInOut(duration: 0.2)) { hovering = inside && !disabled } }
         .onChange(of: disabled) { if $0 { hovering = false } }
         .disabled(disabled).opacity(disabled ? 0.45 : 1)
-        .help("切换到 \(name)").accessibilityLabel("切换到 \(name)")
+        .help(L("切换到 \(name)")).accessibilityLabel(L("切换到 \(name)"))
     }
 }
 
@@ -258,7 +267,7 @@ private struct ReferenceSwitchStyle: ToggleStyle {
             Capsule().fill(configuration.isOn ? PanelColors.action : PanelColors.borderStrong)
                 .frame(width: 34, height: 20)
                 .overlay(alignment: configuration.isOn ? .trailing : .leading) {
-                    Circle().fill(.white).frame(width: 16, height: 16).padding(2)
+                    Circle().fill(.white).frame(width: 16, height: 16).padding(2).allowsHitTesting(false)
                 }
         }
         .buttonStyle(.plain)
@@ -286,6 +295,31 @@ private struct InputFrame: ViewModifier {
         content.font(.system(size: 13)).padding(.horizontal, 12).frame(height: 38)
             .background(PanelColors.card, in: RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(focused ? PanelColors.accent : PanelColors.borderStrong, lineWidth: 1).allowsHitTesting(false))
+    }
+}
+
+private struct ReadOnlyAPIKeyField: NSViewRepresentable {
+    let value: String
+    let placeholder: String
+    let revealed: Bool
+
+    func makeNSView(context: Context) -> NSTextField {
+        let field = NSTextField()
+        field.isEditable = false
+        field.isBordered = false
+        field.drawsBackground = false
+        field.focusRingType = .none
+        field.font = .systemFont(ofSize: 13)
+        field.textColor = .labelColor
+        field.cell?.isScrollable = true
+        field.setAccessibilityLabel("API Key")
+        return field
+    }
+
+    func updateNSView(_ field: NSTextField, context: Context) {
+        field.placeholderString = placeholder
+        field.isSelectable = revealed && !value.isEmpty
+        field.stringValue = revealed ? value : (value.isEmpty ? "" : "••••••••")
     }
 }
 
@@ -383,16 +417,16 @@ private struct PanelSidebar: View {
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(Branding.appName).font(.system(size: 14, weight: .semibold))
-                    Text("账号管理").font(.system(size: 11)).foregroundStyle(PanelColors.muted)
+                    Text(L("账号管理")).font(.system(size: 11)).foregroundStyle(PanelColors.muted)
                 }
                 Spacer(minLength: 0)
             }.frame(height: 58).padding(.horizontal, 16)
             if navigation.showingSettings {
-                NavItem(title: "返回", symbol: "arrow.left", selected: false, shortcut: "⌘[") {
+                NavItem(title: L("返回"), symbol: "arrow.left", selected: false, shortcut: "⌘[") {
                     navigation.showingSettings = false
                     if !state.busy { state.setMessage("") }
                 }.padding(.horizontal, 10)
-                sidebarLabel("设置")
+                sidebarLabel(L("设置"))
                 VStack(spacing: 3) {
                     ForEach(SettingsSection.allCases, id: \.self) { section in
                         NavItem(title: section.title, symbol: section.icon, selected: section == navigation.settingsSelection) {
@@ -406,7 +440,7 @@ private struct PanelSidebar: View {
                     .font(.system(size: 10)).foregroundStyle(PanelColors.muted).lineLimit(1).minimumScaleFactor(0.9)
                     .frame(maxWidth: .infinity, alignment: .leading).padding(.leading, 16).padding(.bottom, 16)
             } else {
-                sidebarLabel("账户")
+                sidebarLabel(L("账户"))
                 VStack(spacing: 3) {
                     ForEach(PanelSection.allCases, id: \.self) { section in
                         NavItem(title: section.title, symbol: section.icon, selected: navigation.selection == section, shortcut: section.shortcut) {
@@ -417,7 +451,7 @@ private struct PanelSidebar: View {
                 }.padding(.horizontal, 10)
                 Spacer()
                 Rectangle().fill(PanelColors.border).frame(height: 1).padding(.horizontal, 14)
-                NavItem(title: "设置", symbol: "gearshape", selected: false, shortcut: "⌘,") {
+                NavItem(title: L("设置"), symbol: "gearshape", selected: false, shortcut: "⌘,") {
                     navigation.settingsSelection = .general; navigation.showingSettings = true
                     if !state.busy { state.setMessage("") }
                 }.padding(.horizontal, 10).padding(.vertical, 10)
@@ -452,14 +486,11 @@ private struct PanelContent: View {
             if let login = state.accountLogin, state.page != .add {
                 HStack(spacing: 10) {
                     if let instructions = login.instructions {
-                        Button("打开登录网页") { NSWorkspace.shared.open(instructions.url) }
-                        Button("复制登录链接") {
-                            NSPasteboard.general.clearContents()
-                            NSPasteboard.general.setString(instructions.url.absoluteString, forType: .string)
-                        }
+                        Button(L("打开登录网页")) { NSWorkspace.shared.open(instructions.url) }
+                        CopyLoginLinkButton(url: instructions.url)
                     }
                     Spacer()
-                    Button("取消登录") { state.cancelChatGPTLogin() }
+                    Button(L("取消登录")) { state.cancelChatGPTLogin() }
                         .disabled(login.isCancelling || login.isSaving)
                 }.padding(.horizontal, 24).padding(.vertical, 10)
                     .background(PanelColors.card)
@@ -470,6 +501,38 @@ private struct PanelContent: View {
         .sheet(isPresented: Binding(get: { state.page == .add }, set: { visible in
             if !visible && state.page == .add { state.editing = nil; state.editingCurrent = nil; state.page = .manage; state.setMessage("") }
         })) { AddView(state: state, initialKind: navigation.newKind).interactiveDismissDisabled(state.accountLogin != nil || (state.editingCurrent != nil && state.busy)) }
+    }
+}
+
+private struct CopyLoginLinkButton: View {
+    let url: URL
+    @State private var copied = false
+    @State private var resetWorkItem: DispatchWorkItem?
+
+    var body: some View {
+        Button {
+            let pasteboard = NSPasteboard.general
+            pasteboard.clearContents()
+            guard pasteboard.setString(url.absoluteString, forType: .string) else { return }
+            resetWorkItem?.cancel()
+            withAnimation(.easeInOut(duration: 0.15)) { copied = true }
+            let workItem = DispatchWorkItem {
+                withAnimation(.easeInOut(duration: 0.15)) { copied = false }
+            }
+            resetWorkItem = workItem
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2, execute: workItem)
+        } label: {
+            ZStack {
+                Text(L("复制登录链接")).hidden()
+                if copied { Label(L("已复制"), systemImage: "checkmark") }
+                else { Text(L("复制登录链接")) }
+            }
+        }
+        .onChange(of: url) { _ in
+            resetWorkItem?.cancel()
+            copied = false
+        }
+        .onDisappear { resetWorkItem?.cancel() }
     }
 }
 
@@ -502,20 +565,20 @@ private struct ManageView: View {
                 PageHeading(title: section.title, subtitle: section.subtitle, symbol: section.icon)
                 Spacer()
                 Button { state.refresh(retryMissingPlanTypes: true) } label: {
-                    Label(section == .openai ? "刷新" : "刷新额度", systemImage: "arrow.clockwise")
+                    Label(section == .openai ? L("刷新") : L("刷新额度"), systemImage: "arrow.clockwise")
                 }.buttonStyle(OutlineButtonStyle()).disabled(state.busy || (section != .openai && state.currentQuotaLoading))
-                    .help("刷新账号状态和额度（⌘R）")
+                    .help(L("刷新账号状态和额度（⌘R）"))
                 if section == .overview {
                     Button { openMenu = .add } label: {
-                        Label("添加", systemImage: "plus").font(.system(size: 13, weight: .medium))
+                        Label(L("添加"), systemImage: "plus").font(.system(size: 13, weight: .medium))
                             .padding(.horizontal, 6).frame(height: 34).contentShape(Rectangle())
                     }.buttonStyle(.plain).fixedSize().disabled(state.busy)
-                        .help("添加账号或 API Key")
+                        .help(L("添加账号或 API Key"))
                         .anchorPreference(key: PanelMenuAnchorKey.self, value: .bounds) { [.add: $0] }
                 } else {
                     Button { add(section == .openai ? .openai : .chatgpt) } label: {
-                        Label(section == .openai ? "添加 API Key" : "登录新账号", systemImage: "plus")
-                    }.buttonStyle(PrimaryButtonStyle()).disabled(state.busy).help("添加（⌘N）")
+                        Label(section == .openai ? L("添加 API Key") : L("登录新账号"), systemImage: "plus")
+                    }.buttonStyle(PrimaryButtonStyle()).disabled(state.busy).help(L("添加（⌘N）"))
                 }
             }.padding(.horizontal, 28).frame(height: 70)
             Rectangle().fill(PanelColors.border).frame(height: 1)
@@ -523,22 +586,22 @@ private struct ManageView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     HStack(spacing: 9) {
                         Image(systemName: "magnifyingglass").foregroundStyle(PanelColors.muted)
-                        TextField("搜索账号或配置", text: $query).textFieldStyle(.plain)
-                            .focused($searchFocused).help("搜索账号或配置（⌘F）")
+                        TextField(L("搜索账号或配置"), text: $query).textFieldStyle(.plain)
+                            .focused($searchFocused).help(L("搜索账号或配置（⌘F）"))
                     }.font(.system(size: 13)).padding(.horizontal, 12).frame(height: 38)
                         .background(PanelColors.card, in: RoundedRectangle(cornerRadius: 9))
                         .overlay(RoundedRectangle(cornerRadius: 9).stroke(PanelColors.border, lineWidth: 1))
-                    if state.demo { Label("演示模式 · 模拟数据", systemImage: "sparkles").font(.system(size: 11)).foregroundStyle(PanelColors.muted) }
+                    if state.demo { Label(L("演示模式 · 模拟数据"), systemImage: "sparkles").font(.system(size: 11)).foregroundStyle(PanelColors.muted) }
                     currentStatusMessage
                     ForEach(section.kinds) { kind in group(kind) }
                 }.frame(maxWidth: .infinity, alignment: .leading).padding(28)
             }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             if let pending = state.profiles.first(where: { $0.id == state.pendingProfileID }) {
                 HStack {
-                    Label("待切换：\(state.profileDisplayName(pending))", systemImage: "clock").font(.system(size: 11)).foregroundStyle(PanelColors.secondary)
+                    Label(L("待切换：\(state.profileDisplayName(pending))"), systemImage: "clock").font(.system(size: 11)).foregroundStyle(PanelColors.secondary)
                     Spacer()
-                    Button("重试") { state.requestActivation(pending, reauthenticate: state.pendingReauthentication) }.disabled(state.busy)
-                    Button("取消") { state.cancelPending(); state.setMessage("") }.disabled(state.busy)
+                    Button(L("重试")) { state.requestActivation(pending, reauthenticate: state.pendingReauthentication) }.disabled(state.busy)
+                    Button(L("取消")) { state.cancelPending(); state.setMessage("") }.disabled(state.busy)
                 }.padding(.horizontal, 24).padding(.bottom, 8)
             }
             if !state.message.isEmpty { StatusMessage(state: state).padding(.horizontal, 24).padding(.bottom, 12) }
@@ -551,7 +614,7 @@ private struct ManageView: View {
                     let position = PanelMenuPlacement.origin(anchor: geometry[anchor], container: geometry.size, menu: size)
                     ZStack(alignment: .topLeading) {
                         Color.clear.contentShape(Rectangle()).onTapGesture { openMenu = nil }
-                        Button("关闭菜单") { openMenu = nil }
+                        Button(L("关闭菜单")) { openMenu = nil }
                             .keyboardShortcut(.cancelAction)
                             .frame(width: 0, height: 0).opacity(0).accessibilityHidden(true)
                         panelMenu(menu, size: size)
@@ -567,9 +630,9 @@ private struct ManageView: View {
         .onChange(of: openMenu) { if $0 == nil { menuFocusedItem = nil } }
         .onChange(of: section) { _ in openMenu = nil }
         .onChange(of: state.busy) { if $0 { openMenu = nil } }
-        .confirmationDialog("删除已保存的配置？", isPresented: Binding(get: { toDelete != nil }, set: { if !$0 { toDelete = nil } }), titleVisibility: .visible) {
-            if let profile = toDelete { Button("删除 \(state.profileDisplayName(profile))", role: .destructive) { state.remove(profile); toDelete = nil } }
-            Button("取消", role: .cancel) { toDelete = nil }
+        .confirmationDialog(L("删除已保存的配置？"), isPresented: Binding(get: { toDelete != nil }, set: { if !$0 { toDelete = nil } }), titleVisibility: .visible) {
+            if let profile = toDelete { Button(L("删除 \(state.profileDisplayName(profile))"), role: .destructive) { state.remove(profile); toDelete = nil } }
+            Button(L("取消"), role: .cancel) { toDelete = nil }
         }
     }
 
@@ -577,14 +640,14 @@ private struct ManageView: View {
         VStack(spacing: 2) {
             switch target {
             case .add:
-                panelMenuItem("登录新账号", symbol: "person.badge.plus", index: 0) { add(.chatgpt) }
-                panelMenuItem("添加 API Key", symbol: "key.horizontal", index: 1) { add(.openai) }
+                panelMenuItem(L("登录新账号"), symbol: "person.badge.plus", index: 0) { add(.chatgpt) }
+                panelMenuItem(L("添加 API Key"), symbol: "key.horizontal", index: 1) { add(.openai) }
             case .profile(let id):
                 if let profile = state.profiles.first(where: { $0.id == id }) {
-                    panelMenuItem("重新登录", symbol: "arrow.clockwise", index: 0) {
+                    panelMenuItem(L("重新登录"), symbol: "arrow.clockwise", index: 0) {
                         state.requestActivation(profile, reauthenticate: true)
                     }
-                    panelMenuItem("删除", symbol: "trash", role: .destructive, index: 1) { toDelete = profile }
+                    panelMenuItem(L("删除"), symbol: "trash", role: .destructive, index: 1) { toDelete = profile }
                 }
             }
         }
@@ -618,13 +681,13 @@ private struct ManageView: View {
 
     @ViewBuilder private var currentStatusMessage: some View {
         if state.current.configAvailable && !state.current.accountAvailable {
-            Label("无法读取当前登录状态。", systemImage: "exclamationmark.triangle")
+            Label(L("无法读取当前登录状态。"), systemImage: "exclamationmark.triangle")
                 .font(.system(size: 12)).foregroundStyle(PanelColors.secondary)
         } else if state.current.configAvailable && !state.current.isOfficialProvider {
-            Label("当前 Codex 配置未识别为官方配置。", systemImage: "exclamationmark.triangle")
+            Label(L("当前 Codex 配置未识别为官方配置。"), systemImage: "exclamationmark.triangle")
                 .font(.system(size: 12)).foregroundStyle(PanelColors.secondary)
         } else if state.current.accountAvailable && state.current.accountType != nil && state.current.currentLoginItem == nil {
-            Label("当前登录类型暂不支持。", systemImage: "exclamationmark.triangle")
+            Label(L("当前登录类型暂不支持。"), systemImage: "exclamationmark.triangle")
                 .font(.system(size: 12)).foregroundStyle(PanelColors.secondary)
         }
     }
@@ -641,13 +704,14 @@ private struct ManageView: View {
         }
         return VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                Text(kind == .chatgpt ? "官方账号" : "官方 API Key").font(.system(size: 14, weight: .semibold))
+                Text(kind == .chatgpt ? L("官方账号") : L("官方 API Key")).font(.system(size: 14, weight: .semibold))
                 Text("\(entries.count + (current == nil ? 0 : 1))").font(.system(size: 10, weight: .semibold)).foregroundStyle(PanelColors.secondary)
                     .padding(.horizontal, 7).padding(.vertical, 3).background(PanelColors.subtle, in: Capsule())
                 Spacer()
                 if section == .overview {
                     Button { add(kind) } label: {
-                        Label(kind == .chatgpt ? "登录新账号" : "添加 API Key", systemImage: "plus")
+                        Label(kind == .chatgpt ? L("登录新账号") : L("添加 API Key"), systemImage: "plus")
+                            .padding(.horizontal, 4).frame(height: 28).contentShape(Rectangle())
                     }.buttonStyle(.plain).font(.system(size: 11, weight: .medium))
                         .foregroundStyle(PanelColors.accent).disabled(state.busy)
                 }
@@ -655,7 +719,7 @@ private struct ManageView: View {
             if entries.isEmpty && current == nil {
                 PanelCard {
                     HStack {
-                        Text(term.isEmpty ? "还没有\(kind == .chatgpt ? "账号" : "API Key")" : "没有匹配的配置")
+                        Text(term.isEmpty ? L("还没有\(kind == .chatgpt ? L("账号") : "API Key")") : L("没有匹配的配置"))
                             .font(.system(size: 13)).foregroundStyle(PanelColors.secondary)
                         Spacer()
                     }.padding(16)
@@ -679,7 +743,7 @@ private struct ManageView: View {
                         state.beginEditingCurrentAlias()
                     }
                     Spacer(minLength: 6)
-                    currentBadge(active ? "使用中" : "当前登录")
+                    currentBadge(active ? L("使用中") : L("当前登录"))
                 }.padding(.horizontal, 16).padding(.vertical, 12).frame(minHeight: 68)
                 if current.kind == .chatgpt {
                     quotaDetails(state.currentQuotaPresentation).padding(.horizontal, 16).padding(.bottom, 14)
@@ -701,22 +765,22 @@ private struct ManageView: View {
                     }
                     Spacer(minLength: 6)
                     if active {
-                        currentBadge("使用中")
+                        currentBadge(L("使用中"))
                     } else {
-                        if state.matchesCurrentLogin(profile) { currentBadge("当前登录") }
+                        if state.matchesCurrentLogin(profile) { currentBadge(L("当前登录")) }
                         SwitchAccountButton(name: name, disabled: state.busy) { state.requestActivation(profile) }
                     }
                     if !active && profile.kind == .chatgpt && profile.hasSecret {
                         Button { openMenu = .profile(profile.id) } label: { Image(systemName: "ellipsis") }
-                            .buttonStyle(IconButtonStyle()).disabled(state.busy).help("更多操作")
-                            .accessibilityLabel("更多操作")
+                            .buttonStyle(IconButtonStyle()).disabled(state.busy).help(L("更多操作"))
+                            .accessibilityLabel(L("更多操作"))
                             .anchorPreference(key: PanelMenuAnchorKey.self, value: .bounds) { [.profile(profile.id): $0] }
                     } else if active && profile.kind == .chatgpt {
-                        Button("重新登录") { state.requestActivation(profile, reauthenticate: true) }
+                        Button(L("重新登录")) { state.requestActivation(profile, reauthenticate: true) }
                             .buttonStyle(OutlineButtonStyle()).fixedSize().disabled(state.busy)
                     } else if !active {
                         Button { toDelete = profile } label: { Image(systemName: "trash") }
-                            .buttonStyle(IconButtonStyle()).help("删除 \(name)").accessibilityLabel("删除 \(name)").disabled(state.busy)
+                            .buttonStyle(IconButtonStyle()).help(L("删除 \(name)")).accessibilityLabel(L("删除 \(name)")).disabled(state.busy)
                     }
                 }.padding(.horizontal, 16).padding(.vertical, 12).frame(minHeight: 68)
                 if profile.kind == .chatgpt {
@@ -735,7 +799,7 @@ private struct ManageView: View {
                 if kind == .chatgpt && secondaryEmail == nil { membershipBadge(plan) }
                 Button(action: edit) {
                     ActionIcon(image: Branding.editIcon, fallback: "square.and.pencil", size: 14)
-                }.buttonStyle(IconButtonStyle()).help("编辑 \(name)").accessibilityLabel("编辑 \(name)").disabled(editDisabled)
+                }.buttonStyle(IconButtonStyle()).help(L("编辑 \(name)")).accessibilityLabel(L("编辑 \(name)")).disabled(editDisabled)
             }
             if kind == .chatgpt, let secondaryEmail {
                 HStack(spacing: 7) {
@@ -761,7 +825,7 @@ private struct ManageView: View {
                         .frame(maxWidth: bucket.windows.count == 1 ? 320 : 664, alignment: .leading)
                     }
                     if let value = bucket.individualLimit { Text(value.description).font(.system(size: 11)).foregroundStyle(PanelColors.secondary) }
-                    if let value = bucket.reached { Text(value).font(.system(size: 11, weight: .medium)).foregroundStyle(PanelColors.accent) }
+                    if let value = bucket.reached { Text(Localization.text(value)).font(.system(size: 11, weight: .medium)).foregroundStyle(PanelColors.accent) }
                 }
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 16) { quotaSummaryItems(quota, presentation) }
@@ -772,8 +836,8 @@ private struct ManageView: View {
         } else {
             HStack(spacing: 6) {
                 if presentation.isLoading { ProgressView().controlSize(.small) }
-                Text(presentation.isLoading ? "正在读取额度…" :
-                     (presentation.failed ? "额度暂不可用" : (presentation.isCached ? "切换后查看额度" : "额度尚未查询")))
+                Text(presentation.isLoading ? L("正在读取额度…") :
+                     (presentation.failed ? L("额度暂不可用") : (presentation.isCached ? L("切换后查看额度") : L("额度尚未查询"))))
                     .font(.system(size: 11)).foregroundStyle(PanelColors.muted)
             }.frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -784,11 +848,11 @@ private struct ManageView: View {
             HStack(spacing: 8) {
                 Text(window.title)
                 Spacer(minLength: 4)
-                Text("剩余 \(window.remainingPercent)%").monospacedDigit()
+                Text(L("剩余 \(window.remainingPercent)%")).monospacedDigit()
             }
             quotaProgressBar(window)
             if let reset = window.resetsAt {
-                Text("\(QuotaTime.format(reset)) 重置").foregroundStyle(PanelColors.muted).lineLimit(1)
+                Text(L("\(QuotaTime.format(reset)) 重置")).foregroundStyle(PanelColors.muted).lineLimit(1)
             }
         }
         .font(.system(size: 11)).foregroundStyle(PanelColors.secondary)
@@ -808,16 +872,17 @@ private struct ManageView: View {
     @ViewBuilder private func quotaSummaryItems(_ quota: AccountQuota, _ presentation: QuotaPresentation) -> some View {
         ForEach(quota.buckets) { bucket in
             if let value = bucket.credits {
-                Text(quota.buckets.count > 1 ? bucket.title.map { "\($0) · \(value)" } ?? value : value)
+                let credits = localizedQuotaCredits(value)
+                Text(quota.buckets.count > 1 ? bucket.title.map { "\($0) · \(credits)" } ?? credits : credits)
                     .font(.system(size: 11)).foregroundStyle(PanelColors.secondary)
             }
         }
         if let count = quota.resetCredits {
-            Text("可用重置次数：\(count)").font(.system(size: 11)).foregroundStyle(PanelColors.secondary)
+            Text(L("可用重置次数：\(count)")).font(.system(size: 11)).foregroundStyle(PanelColors.secondary)
         }
-        Text(presentation.isLoading ? "正在刷新额度…" :
-             (presentation.failed ? "刷新失败 · 上次查询 \(QuotaTime.format(quota.updatedAt))" :
-              "\(presentation.isCached ? "上次查询" : "更新于") \(QuotaTime.format(quota.updatedAt))"))
+        Text(presentation.isLoading ? L("正在刷新额度…") :
+             (presentation.failed ? L("刷新失败 · 上次查询 \(QuotaTime.format(quota.updatedAt))") :
+              "\(presentation.isCached ? L("上次查询") : L("更新于")) \(QuotaTime.format(quota.updatedAt))"))
             .font(.system(size: 10)).foregroundStyle(PanelColors.muted)
     }
 
@@ -840,8 +905,8 @@ private struct ManageView: View {
             .padding(.horizontal, 7).padding(.vertical, 3)
             .background(title == ChatGPTPlan.unknownTitle ? PanelColors.subtle : PanelColors.accentBackground, in: Capsule())
             .layoutPriority(1)
-            .accessibilityLabel("会员类型：\(title)")
-            .help(title == ChatGPTPlan.unknownTitle ? "该会员类型无法归入当前显示的分类。" : "会员类型来自 Codex，具体订阅以 ChatGPT 设置为准。")
+            .accessibilityLabel(L("会员类型：\(title)"))
+            .help(title == ChatGPTPlan.unknownTitle ? L("该会员类型无法归入当前显示的分类。") : L("会员类型来自 Codex，具体订阅以 ChatGPT 设置为准。"))
     }
 }
 
@@ -855,6 +920,7 @@ private struct AddView: View {
     @State private var showSecret = false
     @State private var model = ""
     @State private var secret = ""
+    @State private var loadedSecret: String?
     @FocusState private var focusedField: InputField?
 
     private enum InputField: Hashable { case name, secret }
@@ -865,13 +931,18 @@ private struct AddView: View {
         guard let profile = state.editing else { return false }
         return profile.kind == .openai && !profile.hasSecret && state.matchesCurrentLogin(profile)
     }
+    private var isReadOnlyCurrentAPI: Bool { kind == .openai && (isEditingCurrent || isCurrentAPIWithoutBackup) }
+    private var secretPrompt: String {
+        if isReadOnlyCurrentAPI { return L("点击眼睛查看当前密钥") }
+        return state.editing?.hasSecret == true ? L("留空保留现有密钥") : "OpenAI API Key"
+    }
     private var title: String {
-        if isEditing { return kind == .chatgpt ? "编辑账号" : "编辑 API Key" }
-        return isNewChatGPT ? "登录新账号" : "添加 API Key"
+        if isEditing { return kind == .chatgpt ? L("编辑账号") : L("编辑 API Key") }
+        return isNewChatGPT ? L("登录新账号") : L("添加 API Key")
     }
     private var subtitle: String {
-        if isEditing { return isEditingCurrent ? "修改本地别名" : "修改本地配置" }
-        return isNewChatGPT ? "使用 ChatGPT 账号完成官方授权" : "保存 OpenAI API Key 以便切换"
+        if isEditing { return isEditingCurrent ? L("修改本地别名") : L("修改本地配置") }
+        return isNewChatGPT ? L("使用 ChatGPT 账号完成官方授权") : L("保存 OpenAI API Key 以便切换")
     }
 
     var body: some View {
@@ -882,74 +953,79 @@ private struct AddView: View {
             VStack(alignment: .leading, spacing: 18) {
                 if isNewChatGPT {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("登录方式").font(.system(size: 12, weight: .medium))
+                        Text(L("登录方式")).font(.system(size: 12, weight: .medium))
                         HStack(spacing: 10) {
                             ForEach(ChatGPTLoginMethod.allCases) { method in loginOption(method) }
                         }.disabled(state.busy)
                     }
                     HStack {
-                        Text("自动打开浏览器").font(.system(size: 12))
+                        Text(L("自动打开浏览器")).font(.system(size: 12))
                         Spacer()
-                        Toggle("自动打开浏览器", isOn: $openBrowser)
-                            .toggleStyle(ReferenceSwitchStyle(title: "自动打开浏览器"))
+                        Toggle(L("自动打开浏览器"), isOn: $openBrowser)
+                            .toggleStyle(ReferenceSwitchStyle(title: L("自动打开浏览器")))
                             .disabled(state.busy)
                     }
                     if let instructions = state.accountLogin?.instructions {
                         loginInstructions(instructions)
                     } else {
-                        Text("在浏览器中登录要添加的账号，完成后不会自动切换当前 Codex 登录。")
+                        Text(L("在浏览器中登录要添加的账号，完成后不会自动切换当前 Codex 登录。"))
                             .font(.system(size: 11)).foregroundStyle(PanelColors.muted)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                 } else {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("名称").font(.system(size: 12, weight: .medium))
-                        TextField("名称", text: $name, prompt: Text(kind == .openai ? "例如：工作 API Key" : "例如：个人账号"))
+                        Text(L("名称")).font(.system(size: 12, weight: .medium))
+                        TextField(L("名称"), text: $name, prompt: Text(kind == .openai ? L("例如：工作 API Key") : L("例如：个人账号")))
                             .textFieldStyle(.plain).focused($focusedField, equals: .name)
                             .modifier(InputFrame(focused: focusedField == .name))
-                            .accessibilityLabel("名称")
+                            .accessibilityLabel(L("名称"))
                     }
                 }
-                if kind == .openai && !isEditingCurrent && !isCurrentAPIWithoutBackup {
+                if kind == .openai {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("API Key").font(.system(size: 12, weight: .medium))
                         HStack(spacing: 8) {
                             Group {
-                                if showSecret {
-                                    TextField("API Key", text: $secret, prompt: Text(state.editing?.hasSecret == true ? "留空保留现有密钥" : "OpenAI API Key"))
+                                if isReadOnlyCurrentAPI {
+                                    ReadOnlyAPIKeyField(value: secret, placeholder: secretPrompt, revealed: showSecret)
+                                        .frame(height: 20)
+                                } else if showSecret {
+                                    TextField("API Key", text: $secret, prompt: Text(secretPrompt))
                                         .textFieldStyle(.plain).focused($focusedField, equals: .secret).accessibilityLabel("API Key")
                                 } else {
-                                    SecureField("API Key", text: $secret, prompt: Text(state.editing?.hasSecret == true ? "留空保留现有密钥" : "OpenAI API Key"))
+                                    SecureField("API Key", text: $secret, prompt: Text(secretPrompt))
                                         .textFieldStyle(.plain).focused($focusedField, equals: .secret).accessibilityLabel("API Key")
                                 }
                             }
-                            Button {
-                                showSecret.toggle()
-                                DispatchQueue.main.async { focusedField = .secret }
-                            } label: { Image(systemName: showSecret ? "eye.slash" : "eye") }
+                            Button { toggleSecretVisibility() } label: {
+                                Image(systemName: showSecret ? "eye.slash" : "eye")
+                                    .frame(width: 28, height: 28).contentShape(Rectangle())
+                            }
                                 .buttonStyle(.plain).foregroundStyle(PanelColors.secondary)
-                                .help(showSecret ? "隐藏 API Key" : "显示 API Key")
-                                .accessibilityLabel(showSecret ? "隐藏 API Key" : "显示 API Key")
+                                .help(showSecret ? L("隐藏 API Key") : L("显示 API Key"))
+                                .accessibilityLabel(showSecret ? L("隐藏 API Key") : L("显示 API Key"))
                         }.modifier(InputFrame(focused: focusedField == .secret))
-                        Text("密钥保存在本地凭据文件中，保存时不会验证有效性。")
+                        Text(isReadOnlyCurrentAPI ? L("当前使用的密钥由 Codex 管理，只能查看；更换请添加新的 API Key。") :
+                             L("密钥保存在本地凭据文件中，保存时不会验证有效性。"))
                             .font(.system(size: 11)).foregroundStyle(PanelColors.muted)
                     }
                 }
                 if !state.message.isEmpty { StatusMessage(state: state) }
                 HStack(spacing: 10) {
                     Spacer()
-                    Button(state.accountLogin == nil ? "取消" : "取消登录") {
+                    Button(state.accountLogin == nil ? L("取消") : L("取消登录")) {
                         if state.accountLogin != nil { state.cancelChatGPTLogin() }
                         else { state.editing = nil; state.editingCurrent = nil; state.page = .manage; state.setMessage("") }
                     }
                         .buttonStyle(OutlineButtonStyle()).keyboardShortcut(.cancelAction)
                         .disabled(state.accountLogin?.isCancelling == true || state.accountLogin?.isSaving == true || (isEditingCurrent && state.busy))
-                    Button(isNewChatGPT ? "开始登录" : "保存") {
+                    Button(isNewChatGPT ? L("开始登录") : L("保存")) {
                         if isNewChatGPT { state.beginChatGPTLogin(loginMethod, openBrowser: openBrowser) }
                         else if isEditingCurrent { state.saveCurrentAlias(name) }
                         else {
                             let saved: Bool
-                            if let profile = state.editing { saved = state.update(profile, name: name, model: model, baseURL: "", secret: secret) }
+                            let replacement = isReadOnlyCurrentAPI || (loadedSecret != nil && secret == loadedSecret) ? "" : secret
+                            if let profile = state.editing { saved = state.update(profile, name: name, model: model, baseURL: "", secret: replacement) }
                             else { saved = state.add(name: name, kind: kind, model: model, baseURL: "", secret: secret) }
                             if saved { secret = "" }
                         }
@@ -958,12 +1034,42 @@ private struct AddView: View {
             }.padding(24)
         }.frame(width: 500).background(PanelColors.background).foregroundStyle(PanelColors.text)
             .onChange(of: loginMethod) { _ in if !state.busy { state.setMessage("") } }
+            .onChange(of: name) { _ in
+                if state.isError && [ProfileValidationError.invalidName.localizedDescription,
+                                     ProfileValidationError.duplicateName.localizedDescription].contains(state.message) {
+                    state.setMessage("")
+                }
+            }
             .onAppear {
                 if let current = state.editingCurrent?.currentLoginItem { name = current.name; kind = current.kind }
                 else if let profile = state.editing { name = state.profileDisplayName(profile); kind = profile.kind; model = profile.model ?? "" }
                 else { kind = initialKind }
+                if kind == .openai { _ = loadExistingSecret() }
                 focusedField = isNewChatGPT ? nil : .name
             }
+            .onDisappear { secret = ""; loadedSecret = nil; showSecret = false }
+    }
+
+    @discardableResult private func loadExistingSecret() -> Bool {
+        do {
+            if isReadOnlyCurrentAPI {
+                secret = try state.currentAPIKey(for: state.editingCurrent ?? state.current)
+                loadedSecret = secret
+            } else if let profile = state.editing, profile.kind == .openai, profile.hasSecret {
+                secret = try state.savedAPIKey(for: profile.id)
+                loadedSecret = secret
+            }
+            return true
+        } catch {
+            state.setMessage(error.localizedDescription, error: true)
+            return false
+        }
+    }
+
+    private func toggleSecretVisibility() {
+        if !showSecret && secret.isEmpty && loadedSecret == nil && !loadExistingSecret() { return }
+        showSecret.toggle()
+        if !isReadOnlyCurrentAPI { DispatchQueue.main.async { focusedField = .secret } }
     }
 
     private func loginOption(_ method: ChatGPTLoginMethod) -> some View {
@@ -974,14 +1080,14 @@ private struct AddView: View {
                     .font(.system(size: 15)).foregroundStyle(selected ? PanelColors.accent : PanelColors.secondary)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(method.title).font(.system(size: 12, weight: .semibold))
-                    Text(method == .browser ? "在浏览器中授权" : "输入一次性代码授权")
+                    Text(method == .browser ? L("在浏览器中授权") : L("输入一次性代码授权"))
                         .font(.system(size: 10)).foregroundStyle(PanelColors.secondary)
                 }
                 Spacer(minLength: 0)
                 if selected { Image(systemName: "checkmark.circle.fill").foregroundStyle(PanelColors.accent) }
-            }.frame(maxWidth: .infinity, minHeight: 42, alignment: .topLeading).padding(12)
+            }.frame(maxWidth: .infinity, minHeight: 42, alignment: .topLeading).padding(12).contentShape(Rectangle())
                 .background(selected ? PanelColors.active : PanelColors.card, in: RoundedRectangle(cornerRadius: 9))
-                .overlay(RoundedRectangle(cornerRadius: 9).stroke(selected ? PanelColors.activeBorder : PanelColors.border, lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: 9).stroke(selected ? PanelColors.activeBorder : PanelColors.border, lineWidth: 1).allowsHitTesting(false))
         }.buttonStyle(.plain).accessibilityAddTraits(selected ? .isSelected : [])
     }
 
@@ -990,18 +1096,18 @@ private struct AddView: View {
             if let code = instructions.userCode {
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("设备代码").font(.system(size: 11)).foregroundStyle(PanelColors.secondary)
+                        Text(L("设备代码")).font(.system(size: 11)).foregroundStyle(PanelColors.secondary)
                         Text(code).font(.system(size: 19, weight: .semibold, design: .monospaced)).textSelection(.enabled)
                     }
                     Spacer()
-                    Button("复制代码") { copy(code) }.buttonStyle(OutlineButtonStyle())
+                    Button(L("复制代码")) { copy(code) }.buttonStyle(OutlineButtonStyle())
                 }
             }
             HStack(spacing: 10) {
-                Button("打开登录网页") { NSWorkspace.shared.open(instructions.url) }.buttonStyle(OutlineButtonStyle())
-                Button("复制登录链接") { copy(instructions.url.absoluteString) }.buttonStyle(OutlineButtonStyle())
+                Button(L("打开登录网页")) { NSWorkspace.shared.open(instructions.url) }.buttonStyle(OutlineButtonStyle())
+                CopyLoginLinkButton(url: instructions.url).buttonStyle(OutlineButtonStyle())
             }
-            Text("如果浏览器已登录其他账号，可以复制链接到另一个浏览器或无痕窗口。")
+            Text(L("如果浏览器已登录其他账号，可以复制链接到另一个浏览器或无痕窗口。"))
                 .font(.system(size: 11)).foregroundStyle(PanelColors.muted).fixedSize(horizontal: false, vertical: true)
         }.padding(12).frame(maxWidth: .infinity, alignment: .leading)
             .background(PanelColors.subtle, in: RoundedRectangle(cornerRadius: 9))
@@ -1019,6 +1125,7 @@ private struct SettingsView: View {
     @State private var home = ""
     @State private var path = ""
     @State private var directory = ""
+    @State private var showLanguageMenu = false
 
     private var defaultCodexHome: String {
         (state.detectedCodexHome as NSString).abbreviatingWithTildeInPath
@@ -1045,7 +1152,7 @@ private struct SettingsView: View {
                 Rectangle().fill(PanelColors.border).frame(height: 1)
                 HStack {
                     Spacer()
-                    Button("保存目录") {
+                    Button(L("保存目录")) {
                         let savedHome = NSString(string: home).expandingTildeInPath == state.detectedCodexHome ? "" : home
                         state.savePreferences(home: savedHome, path: path, directory: directory)
                     }
@@ -1054,6 +1161,38 @@ private struct SettingsView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .overlayPreferenceValue(LanguageMenuAnchorKey.self) { anchor in
+            GeometryReader { geometry in
+                if showLanguageMenu, let anchor {
+                    let size = CGSize(width: min(180, max(0, geometry.size.width - 16)), height: 118)
+                    let position = PanelMenuPlacement.origin(anchor: geometry[anchor], container: geometry.size, menu: size)
+                    ZStack(alignment: .topLeading) {
+                        Color.clear.contentShape(Rectangle()).onTapGesture { showLanguageMenu = false }
+                        Button(L("关闭菜单")) { showLanguageMenu = false }
+                            .keyboardShortcut(.cancelAction)
+                            .frame(width: 0, height: 0).opacity(0).accessibilityHidden(true)
+                        VStack(spacing: 2) {
+                            ForEach(AppLanguage.allCases) { language in
+                                Button {
+                                    showLanguageMenu = false
+                                    state.setLanguage(language)
+                                } label: {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: "checkmark").opacity(state.language == language ? 1 : 0).frame(width: 16)
+                                        Text(language.title).lineLimit(1)
+                                    }.foregroundStyle(PanelColors.text)
+                                }.buttonStyle(PanelMenuButtonStyle())
+                            }
+                        }.padding(6).frame(width: size.width, height: size.height)
+                            .background(SystemMenuBackground().clipShape(RoundedRectangle(cornerRadius: 10)))
+                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(PanelColors.borderStrong, lineWidth: 1).allowsHitTesting(false))
+                            .shadow(color: .black.opacity(0.2), radius: 10, y: 4)
+                            .position(x: position.x + size.width / 2, y: position.y + size.height / 2)
+                    }.frame(width: geometry.size.width, height: geometry.size.height).clipped()
+                }
+            }
+        }
+        .onChange(of: section) { _ in showLanguageMenu = false }
         .onAppear {
             home = state.codexHome.isEmpty ? defaultCodexHome : state.codexHome
             path = state.codexPath
@@ -1062,44 +1201,61 @@ private struct SettingsView: View {
     }
 
     @ViewBuilder private var generalContent: some View {
-        settingGroup("外观") {
-            PanelCard {
-                HStack {
-                    Text("明暗")
-                    Spacer()
-                    HStack(spacing: 1) {
-                        ForEach(AppAppearance.allCases) { appearance in
-                            Button { state.setAppearance(appearance) } label: {
-                                Label(appearance.title, systemImage: appearance.symbol)
-                                    .font(.system(size: 12, weight: state.appearance == appearance ? .medium : .regular))
-                                    .padding(.horizontal, 9).frame(height: 30)
-                                    .background(state.appearance == appearance ? PanelColors.card : Color.clear, in: RoundedRectangle(cornerRadius: 6))
-                                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(state.appearance == appearance ? PanelColors.border : Color.clear, lineWidth: 1))
-                            }.buttonStyle(.plain).foregroundStyle(state.appearance == appearance ? PanelColors.accent : PanelColors.secondary)
-                        }
-                    }.padding(3).background(PanelColors.subtle, in: RoundedRectangle(cornerRadius: 9))
-                }.font(.system(size: 13)).padding(.horizontal, 16).frame(minHeight: 54)
-            }
-        }
-        settingGroup("窗口与启动") {
+        settingGroup(L("外观")) {
             PanelCard {
                 VStack(spacing: 0) {
-                    switchRow("开机自启", description: "登录 macOS 时启动应用。", value: Binding(get: { state.launchAtLogin }, set: { state.setLaunchAtLogin($0) }))
+                    HStack {
+                        Text(L("界面语言"))
+                        Spacer()
+                        Button { showLanguageMenu.toggle() } label: {
+                            HStack {
+                                Text(state.language.title).lineLimit(1)
+                                Spacer(minLength: 8)
+                                Image(systemName: "chevron.down").font(.system(size: 10, weight: .semibold))
+                            }.frame(width: 140)
+                        }.buttonStyle(OutlineButtonStyle())
+                            .accessibilityLabel(L("界面语言"))
+                            .anchorPreference(key: LanguageMenuAnchorKey.self, value: .bounds) { $0 }
+                    }.padding(.horizontal, 16).frame(minHeight: 54)
                     settingDivider
-                    switchRow("静默启动", description: "启动时仅显示菜单栏图标。", value: Binding(get: { state.silentLaunch }, set: { state.setSilentLaunch($0) }))
+                    HStack {
+                        Text(L("主题"))
+                        Spacer()
+                        HStack(spacing: 1) {
+                            ForEach(AppAppearance.allCases) { appearance in
+                                Button { state.setAppearance(appearance) } label: {
+                                    Label(appearance.title, systemImage: appearance.symbol)
+                                        .font(.system(size: 12, weight: state.appearance == appearance ? .medium : .regular))
+                                        .padding(.horizontal, 9).frame(height: 30)
+                                        .contentShape(Rectangle())
+                                        .background(state.appearance == appearance ? PanelColors.card : Color.clear, in: RoundedRectangle(cornerRadius: 6))
+                                        .overlay(RoundedRectangle(cornerRadius: 6).stroke(state.appearance == appearance ? PanelColors.border : Color.clear, lineWidth: 1).allowsHitTesting(false))
+                                }.buttonStyle(.plain).foregroundStyle(state.appearance == appearance ? PanelColors.accent : PanelColors.secondary)
+                            }
+                        }.padding(3).background(PanelColors.subtle, in: RoundedRectangle(cornerRadius: 9))
+                    }.padding(.horizontal, 16).frame(minHeight: 54)
+                }.font(.system(size: 13))
+            }
+        }
+        settingGroup(L("窗口与启动")) {
+            PanelCard {
+                VStack(spacing: 0) {
+                    switchRow(L("开机自启"), description: L("登录 macOS 时启动应用。"), value: Binding(get: { state.launchAtLogin }, set: { state.setLaunchAtLogin($0) }))
                     settingDivider
-                    switchRow("关闭窗口后保留在菜单栏", description: "关闭后隐藏程序坞图标，仍可从菜单栏打开。", value: Binding(get: { state.closeToMenuBar }, set: { state.setCloseToMenuBar($0) }))
+                    switchRow(L("静默启动"), description: L("启动时仅显示菜单栏图标。"), value: Binding(get: { state.silentLaunch }, set: { state.setSilentLaunch($0) }))
+                    settingDivider
+                    switchRow(L("关闭窗口后保留在菜单栏"), description: L("关闭后隐藏程序坞图标，仍可从菜单栏打开。"), value: Binding(get: { state.closeToMenuBar }, set: { state.setCloseToMenuBar($0) }))
                 }
             }
         }
     }
 
     @ViewBuilder private var configContent: some View {
-        settingGroup("存储位置") {
+        settingGroup(L("存储位置")) {
             PanelCard {
                 VStack(alignment: .leading, spacing: 10) {
-                    directoryRow("应用配置目录", value: $directory, placeholder: "默认位置", defaultValue: (ProfileStore.standard().directory.path as NSString).abbreviatingWithTildeInPath,
-                                 help: "保存账号配置、凭据文件和应用诊断日志。")
+                    directoryRow(L("应用配置目录"), value: $directory, placeholder: L("默认位置"), defaultValue: (ProfileStore.standard().directory.path as NSString).abbreviatingWithTildeInPath,
+                                 help: L("保存账号配置、凭据文件和应用诊断日志。"))
                 }.padding(16)
             }
         }
@@ -1107,20 +1263,20 @@ private struct SettingsView: View {
             PanelCard {
                 VStack(spacing: 0) {
                     HStack {
-                        titleWithHelp("统一 Codex 会话历史", help: "切换时保留已识别的官方共享分组，不会改写旧会话。")
+                        titleWithHelp(L("统一 Codex 会话历史"), help: L("切换时保留已识别的官方共享分组，不会改写旧会话。"))
                         Spacer()
-                        Toggle("统一 Codex 会话历史", isOn: Binding(get: { state.preserveSharedHistory }, set: { state.setPreserveSharedHistory($0) }))
-                            .labelsHidden().toggleStyle(ReferenceSwitchStyle(title: "统一 Codex 会话历史")).disabled(state.busy || !state.current.configAvailable)
+                        Toggle(L("统一 Codex 会话历史"), isOn: Binding(get: { state.preserveSharedHistory }, set: { state.setPreserveSharedHistory($0) }))
+                            .labelsHidden().toggleStyle(ReferenceSwitchStyle(title: L("统一 Codex 会话历史"))).disabled(state.busy || !state.current.configAvailable)
                     }.padding(.horizontal, 16).frame(minHeight: 55)
                     settingDivider
                     VStack(alignment: .leading, spacing: 10) {
-                        directoryRow("配置目录", value: $home, placeholder: "默认 Codex 配置目录", defaultValue: defaultCodexHome,
-                                     help: "自动读取启动环境中的 CODEX_HOME，未设置时使用 ~/.codex；也可以手动指定。")
+                        directoryRow(L("配置目录"), value: $home, placeholder: L("默认 Codex 配置目录"), defaultValue: defaultCodexHome,
+                                     help: L("自动读取启动环境中的 CODEX_HOME，未设置时使用 ~/.codex；也可以手动指定。"))
                         if !state.preserveSharedHistory {
-                            Text("关闭后，下次切换可能使旧共享分组的会话暂时不显示。")
+                            Text(L("关闭后，下次切换可能使旧共享分组的会话暂时不显示。"))
                                 .font(.system(size: 11)).foregroundStyle(PanelColors.secondary)
                         } else if state.current.usesSharedOfficialProvider {
-                            Label("已识别现有的官方共享会话分组", systemImage: "checkmark.circle")
+                            Label(L("已识别现有的官方共享会话分组"), systemImage: "checkmark.circle")
                                 .font(.system(size: 11)).foregroundStyle(PanelColors.secondary)
                         }
                     }.padding(16)
@@ -1129,40 +1285,40 @@ private struct SettingsView: View {
         }
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("应用诊断日志")
+                Text(L("应用诊断日志"))
                     .font(.system(size: 15, weight: .semibold))
                 Spacer()
-                Button { state.openDiagnosticLog() } label: { Label("打开日志", systemImage: "folder") }.buttonStyle(OutlineButtonStyle())
+                Button { state.openDiagnosticLog() } label: { Label(L("打开日志"), systemImage: "folder") }.buttonStyle(OutlineButtonStyle())
             }
             PanelCard {
                 VStack(alignment: .leading, spacing: 20) {
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("启用应用诊断日志")
-                            Text("只记录应用事件，不记录账号、密钥或会话内容。")
+                            Text(L("启用应用诊断日志"))
+                            Text(L("只记录应用事件，不记录账号、密钥或会话内容。"))
                                 .font(.system(size: 11)).foregroundStyle(PanelColors.secondary)
                         }
                         Spacer()
-                        Toggle("启用应用诊断日志", isOn: Binding(get: { state.loggingEnabled }, set: { state.setDiagnostics(enabled: $0, level: state.logLevel) }))
-                            .labelsHidden().toggleStyle(ReferenceSwitchStyle(title: "启用应用诊断日志"))
+                        Toggle(L("启用应用诊断日志"), isOn: Binding(get: { state.loggingEnabled }, set: { state.setDiagnostics(enabled: $0, level: state.logLevel) }))
+                            .labelsHidden().toggleStyle(ReferenceSwitchStyle(title: L("启用应用诊断日志")))
                     }
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("日志级别")
-                            Text("设置输出的最低日志级别").font(.system(size: 11)).foregroundStyle(PanelColors.secondary)
+                            Text(L("日志级别"))
+                            Text(L("设置输出的最低日志级别")).font(.system(size: 11)).foregroundStyle(PanelColors.secondary)
                         }
                         Spacer()
-                        Picker("日志级别", selection: Binding(get: { state.logLevel }, set: { state.setDiagnostics(enabled: state.loggingEnabled, level: $0) })) {
+                        Picker(L("日志级别"), selection: Binding(get: { state.logLevel }, set: { state.setDiagnostics(enabled: state.loggingEnabled, level: $0) })) {
                             ForEach(DiagnosticLevel.allCases) { Text($0.title).tag($0) }
                         }.labelsHidden().frame(width: 125).disabled(!state.loggingEnabled)
                     }
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("日志级别说明：").foregroundStyle(PanelColors.secondary).padding(.bottom, 2)
-                        logDescription("error", "仅严重错误", color: .red)
-                        logDescription("warn", "错误和警告信息", color: .yellow)
-                        logDescription("info", "一般操作信息（默认）", color: PanelColors.text)
-                        logDescription("debug", "详细状态事件", color: .green)
-                        logDescription("trace", "全部诊断事件", color: PanelColors.muted)
+                        Text(L("日志级别说明：")).foregroundStyle(PanelColors.secondary).padding(.bottom, 2)
+                        logDescription("error", L("仅严重错误"), color: .red)
+                        logDescription("warn", L("错误和警告信息"), color: .yellow)
+                        logDescription("info", L("一般操作信息（默认）"), color: PanelColors.text)
+                        logDescription("debug", L("详细状态事件"), color: .green)
+                        logDescription("trace", L("全部诊断事件"), color: PanelColors.muted)
                     }.font(.system(size: 11)).padding(14).frame(maxWidth: .infinity, alignment: .leading)
                         .background(PanelColors.subtle, in: RoundedRectangle(cornerRadius: 9))
                 }.font(.system(size: 13)).padding(18)
@@ -1177,7 +1333,7 @@ private struct SettingsView: View {
                     if let icon = Branding.appIcon { Image(nsImage: icon).resizable().interpolation(.high).frame(width: 56, height: 56) }
                     VStack(alignment: .leading, spacing: 4) {
                         Text(Branding.fullName).font(.system(size: 16, weight: .semibold))
-                        Text("版本 v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.5.0")")
+                        Text(L("版本 v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.5.0")"))
                             .font(.system(size: 12)).foregroundStyle(PanelColors.secondary)
                     }
                     Spacer(minLength: 8)
@@ -1185,10 +1341,10 @@ private struct SettingsView: View {
                 settingDivider
                 HStack(spacing: 8) {
                     Button { if let url = Bundle.main.url(forResource: "README", withExtension: "md") { NSWorkspace.shared.open(url) } } label: {
-                        Label("使用说明", systemImage: "doc.text")
+                        Label(L("使用说明"), systemImage: "doc.text")
                     }.buttonStyle(OutlineButtonStyle())
                     Button { if let url = Bundle.main.url(forResource: "LICENSE", withExtension: nil) { NSWorkspace.shared.open(url) } } label: {
-                        Label("许可证", systemImage: "doc.plaintext")
+                        Label(L("许可证"), systemImage: "doc.plaintext")
                     }.buttonStyle(OutlineButtonStyle())
                 }.padding(16)
             }
@@ -1242,9 +1398,9 @@ private struct SettingsView: View {
                     let picker = NSOpenPanel()
                     picker.canChooseFiles = false; picker.canChooseDirectories = true; picker.allowsMultipleSelection = false
                     if picker.runModal() == .OK, let url = picker.url { value.wrappedValue = url.path }
-                } label: { Image(systemName: "folder") }.buttonStyle(OutlineButtonStyle()).help("选择目录").accessibilityLabel("选择\(title)")
+                } label: { Image(systemName: "folder") }.buttonStyle(OutlineButtonStyle()).help(L("选择目录")).accessibilityLabel(L("选择\(title)"))
                 Button { value.wrappedValue = defaultValue } label: { Image(systemName: "arrow.uturn.backward") }
-                    .buttonStyle(OutlineButtonStyle()).help("恢复默认目录").accessibilityLabel("恢复默认\(title)")
+                    .buttonStyle(OutlineButtonStyle()).help(L("恢复默认目录")).accessibilityLabel(L("恢复默认\(title)"))
             }
         }
     }

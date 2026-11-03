@@ -5,31 +5,31 @@ enum CodexError: LocalizedError {
     case notInstalled, serverUnavailable, timeout, requestFailed, changedExternally, authenticationFailed, loginCancelled, invalidAuthURL, browserUnavailable, deviceLoginUnavailable, overridden, partialLogin, loginRestored, missingHelper, providerInUse, environmentOverride, unsupportedCredentialStore, invalidCredentials, customOpenAIEndpoint, differentAccount, codexStillRunning, processCheckFailed, desktopQuitFailed, loginRestricted, credentialBackupUncertain
     var errorDescription: String? {
         switch self {
-        case .notInstalled: return "找不到 Codex CLI。请安装 Codex，并确保 codex 在常用路径中。"
-        case .serverUnavailable: return "无法启动 Codex 服务，请检查本机配置。"
-        case .timeout: return "Codex 响应超时，请重试。"
-        case .requestFailed: return "Codex 未能完成操作，请检查配置和组织策略。"
-        case .changedExternally: return "Codex 配置在操作期间发生变化，请刷新后重试。"
-        case .authenticationFailed: return "Codex 登录未完成，请重试。"
-        case .loginCancelled: return "登录未完成或已取消。"
-        case .invalidAuthURL: return "Codex 返回了无效的登录地址。"
-        case .browserUnavailable: return "无法打开浏览器，登录已取消。"
-        case .deviceLoginUnavailable: return "无法启动设备代码登录。请确认 ChatGPT 安全设置中已启用设备代码登录，或改用浏览器登录。"
-        case .overridden: return "配置已写入，但被更高优先级的设置覆盖。请检查组织或项目配置。"
-        case .partialLogin: return "切换未完成，当前登录或 Codex 配置可能已改变。请检查当前状态后重试。"
-        case .loginRestored: return "切换未完成，已恢复原登录凭据。请检查 Codex 配置后重试。"
-        case .missingHelper: return "找不到应用内的凭据读取程序。"
-        case .providerInUse: return "请先切换到其他配置，再删除当前使用的第三方服务。"
-        case .environmentOverride: return "当前环境通过变量或组织身份控制登录，无法可靠切换。请先检查 Codex 身份设置。"
-        case .unsupportedCredentialStore: return "当前 Codex 凭据不是文件存储，暂不支持保存或切换官方账号。未更改登录状态。"
-        case .invalidCredentials: return "无法安全识别 Codex 登录凭据，未更改登录状态。请检查或重新登录。"
-        case .customOpenAIEndpoint: return "Codex 的 OpenAI 地址被自定义，无法确认是否为官方服务地址。请先检查 openai_base_url。"
-        case .differentAccount: return "登录的账号或工作区与所选账号不一致，CAM 未切换当前 Codex 登录。请重新选择账号。"
-        case .codexStillRunning: return "请先退出正在运行的 Codex 桌面版和 CLI，再从菜单切换。切换后重新打开。"
-        case .processCheckFailed: return "无法检查运行中的 Codex 进程，未更改登录状态。"
-        case .desktopQuitFailed: return "无法退出 Codex 桌面版，未更改登录状态。请先手动退出后重试。"
-        case .loginRestricted: return "Codex 登录方式或工作区受到限制，暂不支持切换；未更改登录状态。"
-        case .credentialBackupUncertain: return "账号资料保存未完成，无法确认已保存凭据是否恢复。CAM 未切换当前登录，请检查账号后重试。"
+        case .notInstalled: return L("找不到 Codex CLI。请安装 Codex，并确保 codex 在常用路径中。")
+        case .serverUnavailable: return L("无法启动 Codex 服务，请检查本机配置。")
+        case .timeout: return L("Codex 响应超时，请重试。")
+        case .requestFailed: return L("Codex 未能完成操作，请检查配置和组织策略。")
+        case .changedExternally: return L("Codex 配置在操作期间发生变化，请刷新后重试。")
+        case .authenticationFailed: return L("Codex 登录未完成，请重试。")
+        case .loginCancelled: return L("登录未完成或已取消。")
+        case .invalidAuthURL: return L("Codex 返回了无效的登录地址。")
+        case .browserUnavailable: return L("无法打开浏览器，登录已取消。")
+        case .deviceLoginUnavailable: return L("无法启动设备代码登录。请确认 ChatGPT 安全设置中已启用设备代码登录，或改用浏览器登录。")
+        case .overridden: return L("配置已写入，但被更高优先级的设置覆盖。请检查组织或项目配置。")
+        case .partialLogin: return L("切换未完成，当前登录或 Codex 配置可能已改变。请检查当前状态后重试。")
+        case .loginRestored: return L("切换未完成，已恢复原登录凭据。请检查 Codex 配置后重试。")
+        case .missingHelper: return L("找不到应用内的凭据读取程序。")
+        case .providerInUse: return L("请先切换到其他配置，再删除当前使用的第三方服务。")
+        case .environmentOverride: return L("当前环境通过变量或组织身份控制登录，无法可靠切换。请先检查 Codex 身份设置。")
+        case .unsupportedCredentialStore: return L("当前 Codex 凭据不是文件存储，暂不支持保存或切换官方账号。未更改登录状态。")
+        case .invalidCredentials: return L("无法安全识别 Codex 登录凭据，未更改登录状态。请检查或重新登录。")
+        case .customOpenAIEndpoint: return L("Codex 的 OpenAI 地址被自定义，无法确认是否为官方服务地址。请先检查 openai_base_url。")
+        case .differentAccount: return L("登录的账号或工作区与所选账号不一致，CAM 未切换当前 Codex 登录。请重新选择账号。")
+        case .codexStillRunning: return L("请先退出正在运行的 Codex 桌面版和 CLI，再从菜单切换。切换后重新打开。")
+        case .processCheckFailed: return L("无法检查运行中的 Codex 进程，未更改登录状态。")
+        case .desktopQuitFailed: return L("无法退出 Codex 桌面版，未更改登录状态。请先手动退出后重试。")
+        case .loginRestricted: return L("Codex 登录方式或工作区受到限制，暂不支持切换；未更改登录状态。")
+        case .credentialBackupUncertain: return L("账号资料保存未完成，无法确认已保存凭据是否恢复。CAM 未切换当前登录，请检查账号后重试。")
         }
     }
 }
@@ -37,7 +37,7 @@ enum CodexError: LocalizedError {
 enum ChatGPTLoginMethod: String, CaseIterable, Identifiable {
     case browser, deviceCode
     var id: String { rawValue }
-    var title: String { self == .browser ? "浏览器登录" : "设备代码登录" }
+    var title: String { self == .browser ? L("浏览器登录") : L("设备代码登录") }
     var codexType: String { self == .browser ? "chatgpt" : "chatgptDeviceCode" }
 }
 
@@ -196,6 +196,15 @@ struct CodexService {
     private func ensureNoManagedIdentity() throws {
         let controlled = ["CODEX_API_KEY", "OPENAI_API_KEY", "CODEX_ACCESS_TOKEN", "OPENAI_FEDERATION_RULE_ID", "OPENAI_IDENTITY_TOKEN_FILE", "OPENAI_WORKLOAD_IDENTITY_CONTEXT"]
         guard !controlled.contains(where: { !(environment[$0] ?? "").isEmpty }) else { throw CodexError.environmentOverride }
+    }
+
+    func currentFileAPIKey(matching fingerprint: String) throws -> String {
+        try ensureNoManagedIdentity()
+        guard let snapshot = try fileCredentials().read(), snapshot.kind == .openai,
+              snapshot.fingerprint == fingerprint else { throw CodexError.changedExternally }
+        guard let object = try? JSONSerialization.jsonObject(with: snapshot.bytes) as? [String: Any],
+              let key = object["OPENAI_API_KEY"] as? String, !key.isEmpty else { throw CodexError.invalidCredentials }
+        return key
     }
 
     /// Read the current credential only at an explicit switch, before anything

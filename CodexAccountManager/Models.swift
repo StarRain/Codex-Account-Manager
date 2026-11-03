@@ -8,9 +8,9 @@ enum ProfileKind: String, Codable, CaseIterable, Identifiable {
     static let supported: [ProfileKind] = [.chatgpt, .openai]
     var title: String {
         switch self {
-        case .chatgpt: return "ChatGPT 账号"
+        case .chatgpt: return L("ChatGPT 账号")
         case .openai: return "OpenAI API Key"
-        case .provider: return "第三方 API"
+        case .provider: return L("第三方 API")
         }
     }
     var icon: String {
@@ -96,10 +96,10 @@ struct QuotaWindow: Codable, Identifiable, Equatable {
 
     var remainingPercent: Int { 100 - min(max(usedPercent, 0), 100) }
     var title: String {
-        guard let minutes = durationMinutes, minutes > 0 else { return id == "secondary" ? "次要额度" : "主要额度" }
-        if minutes.isMultiple(of: 1440) { return "\(minutes / 1440) 天" }
-        if minutes.isMultiple(of: 60) { return "\(minutes / 60) 小时" }
-        return "\(minutes) 分钟"
+        guard let minutes = durationMinutes, minutes > 0 else { return id == "secondary" ? L("次要额度") : L("主要额度") }
+        if minutes.isMultiple(of: 1440) { return L("\(minutes / 1440) 天") }
+        if minutes.isMultiple(of: 60) { return L("\(minutes / 60) 小时") }
+        return L("\(minutes) 分钟")
     }
 }
 
@@ -110,8 +110,8 @@ struct QuotaIndividualLimit: Codable, Equatable {
     let resetsAt: Date?
 
     var description: String {
-        let summary = "个人已用 \(used) / \(limit) · 剩余 \(remainingPercent)%"
-        return resetsAt.map { summary + " · \(QuotaTime.format($0)) 重置" } ?? summary
+        let summary = L("个人已用 \(used) / \(limit) · 剩余 \(remainingPercent)%")
+        return resetsAt.map { summary + L(" · \(QuotaTime.format($0)) 重置") } ?? summary
     }
 }
 
@@ -202,11 +202,15 @@ struct AccountQuota: Codable, Equatable {
 enum QuotaTime {
     static func format(_ date: Date) -> String {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "zh_CN")
+        let language = Localization.language
+        formatter.locale = language.locale
         let calendar = Calendar.current
         if calendar.isDateInToday(date) { formatter.dateFormat = "HH:mm" }
-        else if calendar.isDate(date, equalTo: Date(), toGranularity: .year) { formatter.dateFormat = "M月d日 HH:mm" }
-        else { formatter.dateFormat = "yyyy年M月d日 HH:mm" }
+        else if calendar.isDate(date, equalTo: Date(), toGranularity: .year) {
+            formatter.dateFormat = language == .english ? "MMM d, HH:mm" : "M月d日 HH:mm"
+        } else {
+            formatter.dateFormat = language == .english ? "MMM d, yyyy HH:mm" : "yyyy年M月d日 HH:mm"
+        }
         return formatter.string(from: date)
     }
 }
@@ -245,7 +249,7 @@ struct CurrentCodex: Equatable {
     var accountDisplayName: String? = nil
 
     var isOfficialProvider: Bool { !customOpenAIEndpoint && (provider == "openai" || usesSharedOfficialProvider) }
-    var providerLabel: String { usesSharedOfficialProvider ? "OpenAI（共享会话）" : provider }
+    var providerLabel: String { usesSharedOfficialProvider ? L("OpenAI（共享会话）") : provider }
 
     var currentLoginItem: CurrentLoginItem? {
         guard configAvailable, accountAvailable else { return nil }
@@ -253,12 +257,12 @@ struct CurrentCodex: Equatable {
         case "chatgpt":
             let rawEmail = account?.trimmingCharacters(in: .whitespacesAndNewlines)
             let email = rawEmail.flatMap { $0.isEmpty ? nil : $0 }
-            let name = accountDisplayName ?? email ?? "当前官方账号"
+            let name = accountDisplayName ?? email ?? L("当前官方账号")
             let secondaryEmail = email.flatMap { $0.caseInsensitiveCompare(name) == .orderedSame ? nil : $0 }
             return CurrentLoginItem(kind: .chatgpt, name: name,
                                     accountPlanType: accountPlanType, accountEmail: secondaryEmail)
         case "apiKey":
-            return CurrentLoginItem(kind: .openai, name: "当前 API Key")
+            return CurrentLoginItem(kind: .openai, name: L("当前 API Key"))
         default:
             return nil
         }
@@ -268,13 +272,14 @@ struct CurrentCodex: Equatable {
 }
 
 enum ProfileValidationError: LocalizedError {
-    case invalidName, invalidModel, invalidURL, missingKey
+    case invalidName, duplicateName, invalidModel, invalidURL, missingKey
     var errorDescription: String? {
         switch self {
-        case .invalidName: return "请输入 1–64 个字符的配置名称。"
-        case .invalidModel: return "第三方 API 需要有效的模型名称。"
-        case .invalidURL: return "请输入不含凭据、查询参数或片段的 HTTPS 地址；本机服务可使用 HTTP。"
-        case .missingKey: return "请输入 API Key。"
+        case .invalidName: return L("请输入 1–64 个字符的配置名称。")
+        case .duplicateName: return L("名称已存在，请使用其他名称。")
+        case .invalidModel: return L("第三方 API 需要有效的模型名称。")
+        case .invalidURL: return L("请输入不含凭据、查询参数或片段的 HTTPS 地址；本机服务可使用 HTTP。")
+        case .missingKey: return L("请输入 API Key。")
         }
     }
 }
