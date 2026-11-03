@@ -19,6 +19,12 @@ Codex Account Manager（CAM）是一个本地 macOS 应用，用于管理 ChatGP
 
 > 当前版本要求 Codex 使用文件凭据存储，并仅管理官方账号和官方 API Key。
 
+## 界面预览
+
+![CAM 主面板截图](docs/assets/cam-screenshot-zh.jpg)
+
+截图来自演示模式，账号与额度为模拟数据。
+
 ## 核心能力
 
 ### 账号与 API Key
