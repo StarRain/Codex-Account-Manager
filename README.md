@@ -67,7 +67,19 @@ Codex 使用期间可能刷新令牌，CAM 会在切换前重新保存当前文�
 
 从 [GitHub Releases](https://github.com/StarRain/Codex-Account-Manager/releases/latest) 下载 DMG，打开后将 `Codex Account Manager.app` 拖到“应用程序”文件夹。
 
-发行包使用临时签名，未经过 Apple 开发者签名或公证。macOS 可能阻止打开，请在“系统设置 → 隐私与安全性”中确认是否允许运行。替换旧版本前，请先从菜单栏退出 CAM。
+发行包使用临时签名，未经过 Apple 开发者签名或公证。替换旧版本前，请先从菜单栏退出 CAM。
+
+首次打开如果提示无法验证开发者，请先确认安装包来自可信来源，然后选择以下一种方式：
+
+1. 尝试打开应用后，进入“系统设置 → 隐私与安全性”，找到 CAM 并点击“仍要打开”。详见 [Apple 的说明](https://support.apple.com/zh-cn/102445)。
+2. 将应用拖入“应用程序”文件夹后，在“终端”执行：
+
+   ```bash
+   xattr -dr com.apple.quarantine "/Applications/Codex Account Manager.app"
+   open "/Applications/Codex Account Manager.app"
+   ```
+
+终端命令会移除该应用的下载隔离标记，跳过相应的首次来源检查；它不会为应用补上开发者签名或公证。如果应用安装在其他位置，请将命令中的路径替换为实际路径。
 
 ### 从源码构建
 
