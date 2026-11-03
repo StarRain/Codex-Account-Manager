@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import Foundation
 import XCTest
 @testable import CodexAccountManager
@@ -25,6 +26,29 @@ private final class EditShortcutProbe: NSObject {
     @objc func cut(_ sender: Any?) { received.append("cut") }
 }
 
+private final class UpdateURLProtocol: URLProtocol {
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+    override func startLoading() {
+        guard request.url == GitHubUpdateChecker.apiURL,
+              request.httpMethod == "GET",
+              request.value(forHTTPHeaderField: "Authorization") == nil,
+              request.value(forHTTPHeaderField: "Accept") == "application/vnd.github+json" else {
+            client?.urlProtocol(self, didFailWithError: URLError(.badServerResponse))
+            return
+        }
+        let response = HTTPURLResponse(url: GitHubUpdateChecker.apiURL, statusCode: 200,
+                                       httpVersion: nil, headerFields: nil)!
+        let body = Data(#"{"tag_name":"v99.0.0","draft":false,"prerelease":false}"#.utf8)
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: body)
+        client?.urlProtocolDidFinishLoading(self)
+    }
+
+    override func stopLoading() {}
+}
+
 final class CodexAccountManagerTests: XCTestCase {
     func testLocalizationHandlesLanguagesAndInterpolatedValues() {
         XCTAssertEqual(AppLanguage.allCases.map(\.title), ["简体中文", "繁體中文", "English"])
@@ -49,6 +73,51 @@ final class CodexAccountManagerTests: XCTestCase {
         Localization.select(.english)
         XCTAssertEqual(localizedQuotaCredits("积分：0.0000"), "Credits: 0")
         XCTAssertEqual(localizedQuotaCredits("积分可用"), "Credits: available")
+    }
+
+    func testReleaseVersionsAndUpdateResponseHandling() throws {
+        XCTAssertGreaterThan(try XCTUnwrap(ReleaseVersion("v1.10")), try XCTUnwrap(ReleaseVersion("1.9.9")))
+        XCTAssertEqual(ReleaseVersion("1.0"), ReleaseVersion("1.0.0"))
+        XCTAssertNil(ReleaseVersion("v1.0-beta"))
+        XCTAssertNil(ReleaseVersion("1..0"))
+        XCTAssertNil(ReleaseVersion("1.1234567890"))
+
+        func response(_ status: Int, _ body: String = "") -> UpdateCheckStatus {
+            let response = HTTPURLResponse(url: GitHubUpdateChecker.apiURL, statusCode: status,
+                                           httpVersion: nil, headerFields: nil)!
+            return GitHubUpdateChecker.result(currentVersion: "0.5.0", data: Data(body.utf8), response: response, error: nil)
+        }
+        let newer = #"{"tag_name":"v0.6.0","draft":false,"prerelease":false}"#
+        let same = #"{"tag_name":"0.5.0","draft":false,"prerelease":false}"#
+        let prerelease = #"{"tag_name":"v0.6.0","draft":false,"prerelease":true}"#
+        XCTAssertEqual(response(200, newer), .available("0.6.0"))
+        XCTAssertEqual(response(200, same), .upToDate)
+        XCTAssertEqual(response(200, prerelease), .failed(.invalidResponse))
+        XCTAssertEqual(response(200, "{}"), .failed(.invalidResponse))
+        XCTAssertEqual(response(404), .noRelease)
+        XCTAssertEqual(response(403), .failed(.rateLimited))
+        XCTAssertEqual(response(429), .failed(.rateLimited))
+        XCTAssertEqual(response(500), .failed(.network))
+        XCTAssertEqual(GitHubUpdateChecker.result(currentVersion: "0.5.0", data: nil, response: nil,
+                                                   error: URLError(.notConnectedToInternet)), .failed(.network))
+    }
+
+    @MainActor
+    func testManualUpdateCheckRequestsGitHubAndPublishesResult() async {
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [UpdateURLProtocol.self]
+        let session = URLSession(configuration: configuration)
+        defer { session.invalidateAndCancel() }
+        let state = AppState(demo: true, updateChecker: GitHubUpdateChecker(session: session))
+        let completed = expectation(description: "Update result is published")
+        let subscription = state.$updateStatus.sink { status in
+            if status == .available("99.0.0") { completed.fulfill() }
+        }
+        state.checkForUpdates()
+        XCTAssertEqual(state.updateStatus, .checking)
+        await fulfillment(of: [completed], timeout: 3)
+        XCTAssertEqual(state.updateStatus, .available("99.0.0"))
+        subscription.cancel()
     }
 
     @MainActor

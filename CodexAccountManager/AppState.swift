@@ -56,6 +56,7 @@ final class AppState: ObservableObject {
     @Published private(set) var currentStatusLoading = false
     @Published private(set) var currentQuotaLoading = false
     @Published private(set) var currentQuotaFailed = false
+    @Published private(set) var updateStatus: UpdateCheckStatus = .idle
     @Published private(set) var quotaByAccount: [String: AccountQuota] = [:]
     @Published private(set) var accountLogin: AccountLoginProgress?
     var onActivationFailure: ((String) -> Void)?
@@ -71,6 +72,7 @@ final class AppState: ObservableObject {
     private var credentials: SavedCredentialFiles { SavedCredentialFiles(root: storage.directory) }
     private let preferences: UserDefaults
     private let diagnostics: DiagnosticLog
+    private let updateChecker: GitHubUpdateChecker
     private let refreshGroup = DispatchGroup()
     private var refreshGeneration = 0
     private var planRecoveryAttempts = Set<UUID>()
@@ -82,7 +84,8 @@ final class AppState: ObservableObject {
     private var demoAPIKeys: [UUID: String] = [:]
 
     init(demo: Bool = false, storage: ProfileStore? = nil, preferences: UserDefaults = .standard,
-         environment: [String: String] = ProcessInfo.processInfo.environment) {
+         environment: [String: String] = ProcessInfo.processInfo.environment,
+         updateChecker: GitHubUpdateChecker = GitHubUpdateChecker()) {
         let storedPath = demo ? nil : preferences.string(forKey: ProfileStore.preferenceKey)
         let previousDirectory = storedPath.flatMap { $0.hasPrefix("/") ? URL(fileURLWithPath: $0, isDirectory: true) : nil }
         let selectedStore: ProfileStore
@@ -96,6 +99,7 @@ final class AppState: ObservableObject {
         let enabled = demo ? false : (preferences.object(forKey: "diagnosticEnabled") as? Bool ?? true)
         let level = DiagnosticLevel(rawValue: preferences.string(forKey: "diagnosticLevel") ?? "info") ?? .info
         self.demo = demo; self.storage = selectedStore; self.preferences = preferences
+        self.updateChecker = updateChecker
         let selectedLanguage = demo ? AppLanguage.simplifiedChinese : (AppLanguage(rawValue: preferences.string(forKey: "language") ?? "") ?? .simplifiedChinese)
         language = selectedLanguage
         Localization.select(selectedLanguage)
@@ -163,6 +167,15 @@ final class AppState: ObservableObject {
         if !demo { preferences.set(value.rawValue, forKey: "language") }
         if !busy { setMessage("") }
         onLanguageChanged?(value)
+    }
+
+    func checkForUpdates() {
+        guard updateStatus != .checking else { return }
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
+        updateStatus = .checking
+        updateChecker.check(currentVersion: version) { [weak self] result in
+            DispatchQueue.main.async { self?.updateStatus = result }
+        }
     }
 
     func setSilentLaunch(_ enabled: Bool) {

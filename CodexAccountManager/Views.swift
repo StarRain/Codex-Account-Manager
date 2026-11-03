@@ -1337,7 +1337,14 @@ private struct SettingsView: View {
                             .font(.system(size: 12)).foregroundStyle(PanelColors.secondary)
                     }
                     Spacer(minLength: 8)
+                    Button { state.checkForUpdates() } label: {
+                        Label(L("检查更新"), systemImage: "arrow.clockwise")
+                    }.buttonStyle(OutlineButtonStyle()).disabled(state.updateStatus == .checking)
                 }.padding(22)
+                if state.updateStatus != .idle {
+                    settingDivider
+                    updateStatusRow.padding(.horizontal, 16).padding(.vertical, 12)
+                }
                 settingDivider
                 HStack(spacing: 8) {
                     Button { if let url = Bundle.main.url(forResource: "README", withExtension: "md") { NSWorkspace.shared.open(url) } } label: {
@@ -1349,6 +1356,38 @@ private struct SettingsView: View {
                 }.padding(16)
             }
         }
+    }
+
+    @ViewBuilder private var updateStatusRow: some View {
+        HStack(spacing: 8) {
+            switch state.updateStatus {
+            case .idle:
+                EmptyView()
+            case .checking:
+                ProgressView().controlSize(.small)
+                Text(L("正在检查更新…"))
+            case .upToDate:
+                Label(L("当前已是最新版本"), systemImage: "checkmark.circle")
+            case .available(let version):
+                Label(L("发现新版本 v\(version)"), systemImage: "arrow.down.circle")
+                Spacer(minLength: 8)
+                Button(L("查看更新")) { NSWorkspace.shared.open(GitHubUpdateChecker.latestReleaseURL) }
+                    .buttonStyle(OutlineButtonStyle())
+            case .noRelease:
+                Label(L("尚未找到正式发布版本"), systemImage: "info.circle")
+            case .failed(let reason):
+                let message: String = {
+                    switch reason {
+                    case .network: return L("检查更新失败，请检查网络后重试。")
+                    case .rateLimited: return L("GitHub 请求受限，请稍后重试。")
+                    case .invalidResponse: return L("无法识别版本信息，请检查发布标签。")
+                    }
+                }()
+                Label(message, systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(Color.red)
+            }
+        }.font(.system(size: 12)).foregroundStyle(PanelColors.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var settingDivider: some View { Rectangle().fill(PanelColors.border).frame(height: 1) }
