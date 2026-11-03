@@ -81,7 +81,7 @@ enum CodexExecutable {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         let paths = (environment["PATH"] ?? "").split(separator: ":").map(String.init) +
             [home + "/.local/bin", "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"]
-        if let explicit = environment["CODEX_SWITCHER_CODEX_PATH"] {
+        if let explicit = environment["CAM_CODEX_PATH"] {
             guard FileManager.default.isExecutableFile(atPath: explicit) else { throw CodexError.notInstalled }
             return URL(fileURLWithPath: explicit)
         }
@@ -116,7 +116,7 @@ final class AppServerClient {
         output.fileHandleForReading.readabilityHandler = { [weak self] handle in self?.receive(handle.availableData) }
         do { try process.run() } catch { output.fileHandleForReading.readabilityHandler = nil; throw CodexError.serverUnavailable }
         do {
-            _ = try request("initialize", ["clientInfo": ["name": "codex_switcher", "version": "0.1.0"]], timeout: 15)
+            _ = try request("initialize", ["clientInfo": ["name": "cam", "version": "0.1.0"]], timeout: 15)
             try send(["method": "initialized", "params": [:]])
         } catch { close(); throw error }
     }

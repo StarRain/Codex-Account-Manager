@@ -85,7 +85,7 @@ struct FileCredentials {
         _ = try CredentialSnapshot(bytes: bytes)
         guard try raw() == expected else { throw CodexError.changedExternally }
         try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
-        let temporary = home.appendingPathComponent(".codex-switcher-" + UUID().uuidString)
+        let temporary = home.appendingPathComponent(".cam-" + UUID().uuidString)
         let fd = open(temporary.path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0o600)
         guard fd >= 0 else { throw CodexError.requestFailed }
         var closed = false

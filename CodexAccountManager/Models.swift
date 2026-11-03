@@ -38,7 +38,7 @@ struct CodexProfile: Codable, Identifiable, Equatable {
     var accountDisplayName: String? = nil
     var hasCustomName: Bool? = nil
 
-    var providerID: String { "codex_switcher_" + id.uuidString.replacingOccurrences(of: "-", with: "").lowercased() }
+    var providerID: String { "cam_" + id.uuidString.replacingOccurrences(of: "-", with: "").lowercased() }
 
     private enum CodingKeys: String, CodingKey {
         case id, name, kind, model, baseURL, hasSecret, accountEmail, accountID, secretFingerprint, accountPlanType, lastQuota, accountDisplayName, hasCustomName

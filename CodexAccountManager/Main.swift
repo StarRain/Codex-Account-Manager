@@ -311,7 +311,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 }
 
 @main
-struct CodexSwitcherMain {
+struct CodexAccountManagerMain {
     @MainActor static func main() {
         // Compatibility for existing third-party provider configurations.
         if CommandLine.arguments.count == 3, CommandLine.arguments[1] == "--credential-helper" {

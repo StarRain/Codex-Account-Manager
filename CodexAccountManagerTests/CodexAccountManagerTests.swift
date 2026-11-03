@@ -1,7 +1,7 @@
 import AppKit
 import Foundation
 import XCTest
-@testable import CodexSwitcher
+@testable import CodexAccountManager
 
 private final class MemoryCredentials: CredentialStoring {
     var values: [UUID: String] = [:]
@@ -25,7 +25,7 @@ private final class EditShortcutProbe: NSObject {
     @objc func cut(_ sender: Any?) { received.append("cut") }
 }
 
-final class CodexSwitcherTests: XCTestCase {
+final class CodexAccountManagerTests: XCTestCase {
     func testActionIconsLoadFromAppBundleAsTemplates() {
         XCTAssertTrue(Branding.editIcon?.isTemplate == true)
         XCTAssertTrue(Branding.switchAccountIcon?.isTemplate == true)
@@ -259,7 +259,7 @@ final class CodexSwitcherTests: XCTestCase {
     }
 
     func testCodexReadsAndSwitchesTheSharedDefaultHome() throws {
-        let root = FileManager.default.temporaryDirectory.appendingPathComponent("codex-switcher-test-" + UUID().uuidString)
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("cam-test-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
         let config = root.appendingPathComponent("config.toml")
@@ -272,7 +272,7 @@ final class CodexSwitcherTests: XCTestCase {
         // launcher still needs to find its runtime in a standard install path.
         env["PATH"] = "/usr/bin:/bin"
         var service = CodexService(environment: env)
-        service.helperPath = "/private/tmp/codex-switcher-fake-helper"
+        service.helperPath = "/private/tmp/cam-fake-helper"
         XCTAssertEqual(try service.readCurrent().model, "original-model")
         let provider = CodexProfile(id: UUID(), name: "sample", kind: .provider, model: "test-model", baseURL: "https://api.example.invalid/v1", hasSecret: true)
         try service.removeProvider(provider) // A new profile may never have been activated.
@@ -299,7 +299,7 @@ final class CodexSwitcherTests: XCTestCase {
     func testProviderCredentialHelperReachesCodexRequests() throws {
         let python = "/usr/bin/python3"
         guard FileManager.default.isExecutableFile(atPath: python) else { throw XCTSkip("Python is needed only for the loopback test fixture") }
-        let root = FileManager.default.temporaryDirectory.appendingPathComponent("codex-switcher-http-" + UUID().uuidString)
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("cam-http-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
         let portFile = root.appendingPathComponent("port")
@@ -314,7 +314,7 @@ final class CodexSwitcherTests: XCTestCase {
         while !FileManager.default.fileExists(atPath: portFile.path), mock.isRunning, Date() < deadline { Thread.sleep(forTimeInterval: 0.05) }
         guard let port = try? String(contentsOf: portFile, encoding: .utf8), mock.isRunning else { throw XCTSkip("Loopback server unavailable in this environment") }
         let helper = root.appendingPathComponent("fake-helper")
-        try "#!/bin/sh\nprintf '%s\\n' 'fake-switcher-test-key'\n".write(to: helper, atomically: true, encoding: .utf8)
+        try "#!/bin/sh\nprintf '%s\\n' 'fake-cam-test-key'\n".write(to: helper, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: helper.path)
         try "cli_auth_credentials_store = \"file\"\n".write(to: root.appendingPathComponent("config.toml"), atomically: true, encoding: .utf8)
         var env = ProcessInfo.processInfo.environment
@@ -334,7 +334,7 @@ final class CodexSwitcherTests: XCTestCase {
         guard finished.wait(timeout: .now() + 35) == .success else { codex.terminate(); codex.waitUntilExit(); XCTFail("Codex request timed out"); return }
         XCTAssertEqual(codex.terminationStatus, 0)
         XCTAssertEqual(try String(contentsOf: marker, encoding: .utf8), "matched")
-        XCTAssertFalse((try String(contentsOf: root.appendingPathComponent("config.toml"), encoding: .utf8)).contains("fake-switcher-test-key"))
+        XCTAssertFalse((try String(contentsOf: root.appendingPathComponent("config.toml"), encoding: .utf8)).contains("fake-cam-test-key"))
     }
 
     private func chatGPTAuth(email: String, subject: String, workspace: String, refresh: String,
@@ -865,7 +865,7 @@ final class CodexSwitcherTests: XCTestCase {
     }
 
     func testFileCredentialIdentityAndAtomicReplacement() throws {
-        let home = FileManager.default.temporaryDirectory.appendingPathComponent("codex-switch-test-" + UUID().uuidString)
+        let home = FileManager.default.temporaryDirectory.appendingPathComponent("cam-test-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: home) }
         let first = try chatGPTAuth(email: "one@example.invalid", subject: "user-one", workspace: "team", refresh: "refresh-one")
@@ -886,7 +886,7 @@ final class CodexSwitcherTests: XCTestCase {
     }
 
     func testSavedChatGPTSwitchUsesSharedHomeAndRejectsWrongIdentity() throws {
-        let home = FileManager.default.temporaryDirectory.appendingPathComponent("codex-switch-test-" + UUID().uuidString)
+        let home = FileManager.default.temporaryDirectory.appendingPathComponent("cam-test-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: home) }
         let first = try chatGPTAuth(email: "one@example.invalid", subject: "one", workspace: "personal-one", refresh: "fake-one")
@@ -1095,7 +1095,7 @@ final class CodexSwitcherTests: XCTestCase {
     }
 
     func testPreservesCurrentLoginAndRefreshesSavedTokensBeforeSwitch() throws {
-        let home = FileManager.default.temporaryDirectory.appendingPathComponent("codex-switch-test-" + UUID().uuidString)
+        let home = FileManager.default.temporaryDirectory.appendingPathComponent("cam-test-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: home) }
         let first = try chatGPTAuth(email: "one@example.invalid", subject: "one", workspace: "team", refresh: "fake-refresh-one")

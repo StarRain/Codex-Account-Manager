@@ -2,10 +2,10 @@
 set -eu
 project_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 source="$project_dir/assets/cam-app-icon-trimmed.png"
-temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/codex-switcher-icon.XXXXXX")
+temp_dir=$(mktemp -d "${TMPDIR:-/tmp}/cam-icon.XXXXXX")
 trap 'rm -rf "$temp_dir"' EXIT
 iconset="$temp_dir/AppIcon.iconset"
-mkdir -p "$iconset" "$project_dir/CodexAccountSwitcher/Resources"
+mkdir -p "$iconset" "$project_dir/CodexAccountManager/Resources"
 make_icon() {
   sips -z "$1" "$1" "$source" --out "$iconset/$2" >/dev/null
 }
@@ -43,4 +43,4 @@ Path(sys.argv[2]).write_bytes(b"icns" + struct.pack(">I", len(body) + 8) + body)
 PY
 iconutil -c iconset "$temp_dir/AppIcon.icns" -o "$temp_dir/verified.iconset"
 cp "$temp_dir/AppIcon.icns" "$project_dir/assets/cam-app-icon-trimmed.icns"
-cp "$temp_dir/AppIcon.icns" "$project_dir/CodexAccountSwitcher/Resources/AppIcon.icns"
+cp "$temp_dir/AppIcon.icns" "$project_dir/CodexAccountManager/Resources/AppIcon.icns"

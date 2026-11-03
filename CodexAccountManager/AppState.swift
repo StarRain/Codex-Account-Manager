@@ -179,7 +179,7 @@ final class AppState: ObservableObject {
         let home = codexHome.trimmingCharacters(in: .whitespacesAndNewlines)
         let path = codexPath.trimmingCharacters(in: .whitespacesAndNewlines)
         if !home.isEmpty { environment["CODEX_HOME"] = NSString(string: home).expandingTildeInPath }
-        if !path.isEmpty { environment["CODEX_SWITCHER_CODEX_PATH"] = NSString(string: path).expandingTildeInPath }
+        if !path.isEmpty { environment["CAM_CODEX_PATH"] = NSString(string: path).expandingTildeInPath }
         var service = CodexService(environment: environment, preserveSharedHistory: preserveSharedHistory)
         let effectiveHome = service.fileCredentials().home.standardizedFileURL.resolvingSymlinksInPath().path
         service.preferAvailableSharedHistory = preferences.string(forKey: "sharedHistoryHome") == effectiveHome

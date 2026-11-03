@@ -18,7 +18,7 @@
 		10000000000000000000000A /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000B /* AppIcon.icns */; };
 		10000000000000000000000B /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000C /* README.md */; };
 		10000000000000000000000C /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000D /* LICENSE */; };
-		10000000000000000000000D /* CodexSwitcherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000E /* CodexSwitcherTests.swift */; };
+		10000000000000000000000D /* CodexAccountManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000E /* CodexAccountManagerTests.swift */; };
 		10000000000000000000000E /* mock_codex.py in Resources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000F /* mock_codex.py */; };
 		10000000000000000000000F /* mock_responses.py in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000010 /* mock_responses.py */; };
 		100000000000000000000010 /* Edit.png in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000013 /* Edit.png */; };
@@ -49,7 +49,7 @@
 		20000000000000000000000B /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
 		20000000000000000000000C /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		20000000000000000000000D /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
-		20000000000000000000000E /* CodexSwitcherTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexSwitcherTests.swift; sourceTree = "<group>"; };
+		20000000000000000000000E /* CodexAccountManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexAccountManagerTests.swift; sourceTree = "<group>"; };
 		20000000000000000000000F /* mock_codex.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = mock_codex.py; sourceTree = "<group>"; };
 		200000000000000000000010 /* mock_responses.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = mock_responses.py; sourceTree = "<group>"; };
 		200000000000000000000011 /* CAM.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "CAM.app"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -67,15 +67,15 @@
 		300000000000000000000001 = {
 			isa = PBXGroup;
 			children = (
-				300000000000000000000002 /* CodexAccountSwitcher */,
-				300000000000000000000004 /* CodexAccountSwitcherTests */,
+				300000000000000000000002 /* CodexAccountManager */,
+				300000000000000000000004 /* CodexAccountManagerTests */,
 				20000000000000000000000C /* README.md */,
 				20000000000000000000000D /* LICENSE */,
 				300000000000000000000006 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		300000000000000000000002 /* CodexAccountSwitcher */ = {
+		300000000000000000000002 /* CodexAccountManager */ = {
 			isa = PBXGroup;
 			children = (
 				200000000000000000000001 /* AppState.swift */,
@@ -90,14 +90,14 @@
 				20000000000000000000000A /* Info.plist */,
 				300000000000000000000003 /* Resources */,
 			);
-			path = CodexAccountSwitcher;
+			path = CodexAccountManager;
 			sourceTree = "<group>";
 		};
 		300000000000000000000003 /* Resources */ = {isa = PBXGroup; children = (20000000000000000000000B /* AppIcon.icns */, 200000000000000000000013 /* Edit.png */, 200000000000000000000014 /* SwitchAccount.png */,); path = Resources; sourceTree = "<group>"; };
-		300000000000000000000004 /* CodexAccountSwitcherTests */ = {
+		300000000000000000000004 /* CodexAccountManagerTests */ = {
 			isa = PBXGroup;
-			children = (20000000000000000000000E /* CodexSwitcherTests.swift */, 300000000000000000000005 /* Fixtures */,);
-			path = CodexAccountSwitcherTests;
+			children = (20000000000000000000000E /* CodexAccountManagerTests.swift */, 300000000000000000000005 /* Fixtures */,);
+			path = CodexAccountManagerTests;
 			sourceTree = "<group>";
 		};
 		300000000000000000000005 /* Fixtures */ = {isa = PBXGroup; children = (20000000000000000000000F /* mock_codex.py */, 200000000000000000000010 /* mock_responses.py */,); path = Fixtures; sourceTree = "<group>"; };
@@ -166,7 +166,7 @@
 			files = (100000000000000000000001 /* AppState.swift in Sources */, 100000000000000000000002 /* Branding.swift in Sources */, 100000000000000000000003 /* CodexClient.swift in Sources */, 100000000000000000000004 /* DiagnosticLog.swift in Sources */, 100000000000000000000005 /* FileCredentials.swift in Sources */, 100000000000000000000006 /* Main.swift in Sources */, 100000000000000000000007 /* Models.swift in Sources */, 100000000000000000000008 /* Storage.swift in Sources */, 100000000000000000000009 /* Views.swift in Sources */,);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		700000000000000000000004 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (10000000000000000000000D /* CodexSwitcherTests.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
+		700000000000000000000004 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (10000000000000000000000D /* CodexAccountManagerTests.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -176,10 +176,10 @@
 /* Begin XCBuildConfiguration section */
 		800000000000000000000001 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; DEBUG_INFORMATION_FORMAT = dwarf; ENABLE_TESTABILITY = YES; GCC_OPTIMIZATION_LEVEL = 0; MACOSX_DEPLOYMENT_TARGET = 13.0; ONLY_ACTIVE_ARCH = YES; SDKROOT = macosx; SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; SWIFT_VERSION = 5.0; }; name = Debug; };
 		800000000000000000000002 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym"; MACOSX_DEPLOYMENT_TARGET = 13.0; SDKROOT = macosx; SWIFT_COMPILATION_MODE = wholemodule; SWIFT_VERSION = 5.0; }; name = Release; };
-		800000000000000000000003 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 5; ENABLE_APP_SANDBOX = NO; EXECUTABLE_NAME = CodexAccountSwitcher; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = CodexAccountSwitcher/Info.plist; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks"; MARKETING_VERSION = 0.5.0; PRODUCT_BUNDLE_IDENTIFIER = local.codex-switcher.app; PRODUCT_MODULE_NAME = CodexSwitcher; PRODUCT_NAME = CAM; }; name = Debug; };
-		800000000000000000000004 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 5; ENABLE_APP_SANDBOX = NO; EXECUTABLE_NAME = CodexAccountSwitcher; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = CodexAccountSwitcher/Info.plist; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks"; MARKETING_VERSION = 0.5.0; PRODUCT_BUNDLE_IDENTIFIER = local.codex-switcher.app; PRODUCT_MODULE_NAME = CodexSwitcher; PRODUCT_NAME = CAM; }; name = Release; };
-		800000000000000000000005 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {BUNDLE_LOADER = "$(TEST_HOST)"; CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @loader_path/../Frameworks @executable_path/../Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = local.codex-switcher.app.tests; PRODUCT_NAME = "$(TARGET_NAME)"; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CAM.app/Contents/MacOS/CodexAccountSwitcher"; }; name = Debug; };
-		800000000000000000000006 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {BUNDLE_LOADER = "$(TEST_HOST)"; CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @loader_path/../Frameworks @executable_path/../Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = local.codex-switcher.app.tests; PRODUCT_NAME = "$(TARGET_NAME)"; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CAM.app/Contents/MacOS/CodexAccountSwitcher"; }; name = Release; };
+		800000000000000000000003 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 5; ENABLE_APP_SANDBOX = NO; EXECUTABLE_NAME = CodexAccountManager; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = CodexAccountManager/Info.plist; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks"; MARKETING_VERSION = 0.5.0; PRODUCT_BUNDLE_IDENTIFIER = local.codex-account-manager.app; PRODUCT_MODULE_NAME = CodexAccountManager; PRODUCT_NAME = CAM; }; name = Debug; };
+		800000000000000000000004 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 5; ENABLE_APP_SANDBOX = NO; EXECUTABLE_NAME = CodexAccountManager; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = CodexAccountManager/Info.plist; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks"; MARKETING_VERSION = 0.5.0; PRODUCT_BUNDLE_IDENTIFIER = local.codex-account-manager.app; PRODUCT_MODULE_NAME = CodexAccountManager; PRODUCT_NAME = CAM; }; name = Release; };
+		800000000000000000000005 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {BUNDLE_LOADER = "$(TEST_HOST)"; CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @loader_path/../Frameworks @executable_path/../Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = local.codex-account-manager.app.tests; PRODUCT_NAME = "$(TARGET_NAME)"; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CAM.app/Contents/MacOS/CodexAccountManager"; }; name = Debug; };
+		800000000000000000000006 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {BUNDLE_LOADER = "$(TEST_HOST)"; CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @loader_path/../Frameworks @executable_path/../Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = local.codex-account-manager.app.tests; PRODUCT_NAME = "$(TARGET_NAME)"; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CAM.app/Contents/MacOS/CodexAccountManager"; }; name = Release; };
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */

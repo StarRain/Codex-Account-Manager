@@ -13,7 +13,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         self.rfile.read(int(self.headers.get("Content-Length", "0")))
-        if self.headers.get("Authorization") == "Bearer fake-switcher-test-key":
+        if self.headers.get("Authorization") == "Bearer fake-cam-test-key":
             Path(sys.argv[2]).write_text("matched", encoding="utf-8")
         response = {"id": "resp_fake", "object": "response", "created_at": 0,
                     "status": "completed", "model": "test-model", "output": [],
