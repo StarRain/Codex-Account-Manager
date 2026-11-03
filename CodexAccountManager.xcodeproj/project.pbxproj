@@ -1,0 +1,192 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		100000000000000000000001 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000001 /* AppState.swift */; };
+		100000000000000000000002 /* Branding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000002 /* Branding.swift */; };
+		100000000000000000000003 /* CodexClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000003 /* CodexClient.swift */; };
+		100000000000000000000004 /* DiagnosticLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000004 /* DiagnosticLog.swift */; };
+		100000000000000000000005 /* FileCredentials.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000005 /* FileCredentials.swift */; };
+		100000000000000000000006 /* Main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000006 /* Main.swift */; };
+		100000000000000000000007 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000007 /* Models.swift */; };
+		100000000000000000000008 /* Storage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000008 /* Storage.swift */; };
+		100000000000000000000009 /* Views.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000009 /* Views.swift */; };
+		10000000000000000000000A /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000B /* AppIcon.icns */; };
+		10000000000000000000000B /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000C /* README.md */; };
+		10000000000000000000000C /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000D /* LICENSE */; };
+		10000000000000000000000D /* CodexSwitcherTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000E /* CodexSwitcherTests.swift */; };
+		10000000000000000000000E /* mock_codex.py in Resources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000000F /* mock_codex.py */; };
+		10000000000000000000000F /* mock_responses.py in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000010 /* mock_responses.py */; };
+		100000000000000000000010 /* Edit.png in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000013 /* Edit.png */; };
+		100000000000000000000011 /* SwitchAccount.png in Resources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000014 /* SwitchAccount.png */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		400000000000000000000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 500000000000000000000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 600000000000000000000001;
+			remoteInfo = CodexAccountManager;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		200000000000000000000001 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		200000000000000000000002 /* Branding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Branding.swift; sourceTree = "<group>"; };
+		200000000000000000000003 /* CodexClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexClient.swift; sourceTree = "<group>"; };
+		200000000000000000000004 /* DiagnosticLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticLog.swift; sourceTree = "<group>"; };
+		200000000000000000000005 /* FileCredentials.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileCredentials.swift; sourceTree = "<group>"; };
+		200000000000000000000006 /* Main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Main.swift; sourceTree = "<group>"; };
+		200000000000000000000007 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		200000000000000000000008 /* Storage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Storage.swift; sourceTree = "<group>"; };
+		200000000000000000000009 /* Views.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Views.swift; sourceTree = "<group>"; };
+		20000000000000000000000A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		20000000000000000000000B /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
+		20000000000000000000000C /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		20000000000000000000000D /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
+		20000000000000000000000E /* CodexSwitcherTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexSwitcherTests.swift; sourceTree = "<group>"; };
+		20000000000000000000000F /* mock_codex.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = mock_codex.py; sourceTree = "<group>"; };
+		200000000000000000000010 /* mock_responses.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = mock_responses.py; sourceTree = "<group>"; };
+		200000000000000000000011 /* CAM.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "CAM.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		200000000000000000000012 /* CodexAccountManagerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CodexAccountManagerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		200000000000000000000013 /* Edit.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Edit.png; sourceTree = "<group>"; };
+		200000000000000000000014 /* SwitchAccount.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = SwitchAccount.png; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		700000000000000000000001 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		700000000000000000000002 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		300000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				300000000000000000000002 /* CodexAccountSwitcher */,
+				300000000000000000000004 /* CodexAccountSwitcherTests */,
+				20000000000000000000000C /* README.md */,
+				20000000000000000000000D /* LICENSE */,
+				300000000000000000000006 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		300000000000000000000002 /* CodexAccountSwitcher */ = {
+			isa = PBXGroup;
+			children = (
+				200000000000000000000001 /* AppState.swift */,
+				200000000000000000000002 /* Branding.swift */,
+				200000000000000000000003 /* CodexClient.swift */,
+				200000000000000000000004 /* DiagnosticLog.swift */,
+				200000000000000000000005 /* FileCredentials.swift */,
+				200000000000000000000006 /* Main.swift */,
+				200000000000000000000007 /* Models.swift */,
+				200000000000000000000008 /* Storage.swift */,
+				200000000000000000000009 /* Views.swift */,
+				20000000000000000000000A /* Info.plist */,
+				300000000000000000000003 /* Resources */,
+			);
+			path = CodexAccountSwitcher;
+			sourceTree = "<group>";
+		};
+		300000000000000000000003 /* Resources */ = {isa = PBXGroup; children = (20000000000000000000000B /* AppIcon.icns */, 200000000000000000000013 /* Edit.png */, 200000000000000000000014 /* SwitchAccount.png */,); path = Resources; sourceTree = "<group>"; };
+		300000000000000000000004 /* CodexAccountSwitcherTests */ = {
+			isa = PBXGroup;
+			children = (20000000000000000000000E /* CodexSwitcherTests.swift */, 300000000000000000000005 /* Fixtures */,);
+			path = CodexAccountSwitcherTests;
+			sourceTree = "<group>";
+		};
+		300000000000000000000005 /* Fixtures */ = {isa = PBXGroup; children = (20000000000000000000000F /* mock_codex.py */, 200000000000000000000010 /* mock_responses.py */,); path = Fixtures; sourceTree = "<group>"; };
+		300000000000000000000006 /* Products */ = {isa = PBXGroup; children = (200000000000000000000011 /* CAM.app */, 200000000000000000000012 /* CodexAccountManagerTests.xctest */,); name = Products; sourceTree = "<group>"; };
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		600000000000000000000001 /* CodexAccountManager */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 900000000000000000000002 /* Build configuration list for PBXNativeTarget "CodexAccountManager" */;
+			buildPhases = (700000000000000000000003 /* Sources */, 700000000000000000000001 /* Frameworks */, 700000000000000000000005 /* Resources */,);
+			buildRules = ();
+			dependencies = ();
+			name = CodexAccountManager;
+			productName = CAM;
+			productReference = 200000000000000000000011 /* CAM.app */;
+			productType = "com.apple.product-type.application";
+		};
+		600000000000000000000002 /* CodexAccountManagerTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 900000000000000000000003 /* Build configuration list for PBXNativeTarget "CodexAccountManagerTests" */;
+			buildPhases = (700000000000000000000004 /* Sources */, 700000000000000000000002 /* Frameworks */, 700000000000000000000006 /* Resources */,);
+			buildRules = ();
+			dependencies = (A00000000000000000000001 /* PBXTargetDependency */,);
+			name = CodexAccountManagerTests;
+			productName = CodexAccountManagerTests;
+			productReference = 200000000000000000000012 /* CodexAccountManagerTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		500000000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					600000000000000000000001 = {CreatedOnToolsVersion = 15.0; };
+					600000000000000000000002 = {CreatedOnToolsVersion = 15.0; TestTargetID = 600000000000000000000001; };
+				};
+			};
+			buildConfigurationList = 900000000000000000000001 /* Build configuration list for PBXProject "CodexAccountManager" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = zh_CN;
+			hasScannedForEncodings = 0;
+			knownRegions = (zh_CN, Base,);
+			mainGroup = 300000000000000000000001;
+			productRefGroup = 300000000000000000000006 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (600000000000000000000001 /* CodexAccountManager */, 600000000000000000000002 /* CodexAccountManagerTests */,);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		700000000000000000000005 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (10000000000000000000000A /* AppIcon.icns in Resources */, 10000000000000000000000B /* README.md in Resources */, 10000000000000000000000C /* LICENSE in Resources */, 100000000000000000000010 /* Edit.png in Resources */, 100000000000000000000011 /* SwitchAccount.png in Resources */,); runOnlyForDeploymentPostprocessing = 0; };
+		700000000000000000000006 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (10000000000000000000000E /* mock_codex.py in Resources */, 10000000000000000000000F /* mock_responses.py in Resources */,); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		700000000000000000000003 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (100000000000000000000001 /* AppState.swift in Sources */, 100000000000000000000002 /* Branding.swift in Sources */, 100000000000000000000003 /* CodexClient.swift in Sources */, 100000000000000000000004 /* DiagnosticLog.swift in Sources */, 100000000000000000000005 /* FileCredentials.swift in Sources */, 100000000000000000000006 /* Main.swift in Sources */, 100000000000000000000007 /* Models.swift in Sources */, 100000000000000000000008 /* Storage.swift in Sources */, 100000000000000000000009 /* Views.swift in Sources */,);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		700000000000000000000004 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (10000000000000000000000D /* CodexSwitcherTests.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A00000000000000000000001 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = 600000000000000000000001 /* CodexAccountManager */; targetProxy = 400000000000000000000001 /* PBXContainerItemProxy */; };
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		800000000000000000000001 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; DEBUG_INFORMATION_FORMAT = dwarf; ENABLE_TESTABILITY = YES; GCC_OPTIMIZATION_LEVEL = 0; MACOSX_DEPLOYMENT_TARGET = 13.0; ONLY_ACTIVE_ARCH = YES; SDKROOT = macosx; SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG; SWIFT_OPTIMIZATION_LEVEL = "-Onone"; SWIFT_VERSION = 5.0; }; name = Debug; };
+		800000000000000000000002 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym"; MACOSX_DEPLOYMENT_TARGET = 13.0; SDKROOT = macosx; SWIFT_COMPILATION_MODE = wholemodule; SWIFT_VERSION = 5.0; }; name = Release; };
+		800000000000000000000003 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 5; ENABLE_APP_SANDBOX = NO; EXECUTABLE_NAME = CodexAccountSwitcher; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = CodexAccountSwitcher/Info.plist; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks"; MARKETING_VERSION = 0.5.0; PRODUCT_BUNDLE_IDENTIFIER = local.codex-switcher.app; PRODUCT_MODULE_NAME = CodexSwitcher; PRODUCT_NAME = CAM; }; name = Debug; };
+		800000000000000000000004 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 5; ENABLE_APP_SANDBOX = NO; EXECUTABLE_NAME = CodexAccountSwitcher; GENERATE_INFOPLIST_FILE = NO; INFOPLIST_FILE = CodexAccountSwitcher/Info.plist; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks"; MARKETING_VERSION = 0.5.0; PRODUCT_BUNDLE_IDENTIFIER = local.codex-switcher.app; PRODUCT_MODULE_NAME = CodexSwitcher; PRODUCT_NAME = CAM; }; name = Release; };
+		800000000000000000000005 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = {BUNDLE_LOADER = "$(TEST_HOST)"; CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @loader_path/../Frameworks @executable_path/../Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = local.codex-switcher.app.tests; PRODUCT_NAME = "$(TARGET_NAME)"; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CAM.app/Contents/MacOS/CodexAccountSwitcher"; }; name = Debug; };
+		800000000000000000000006 /* Release */ = {isa = XCBuildConfiguration; buildSettings = {BUNDLE_LOADER = "$(TEST_HOST)"; CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @loader_path/../Frameworks @executable_path/../Frameworks"; PRODUCT_BUNDLE_IDENTIFIER = local.codex-switcher.app.tests; PRODUCT_NAME = "$(TARGET_NAME)"; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CAM.app/Contents/MacOS/CodexAccountSwitcher"; }; name = Release; };
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		900000000000000000000001 /* Build configuration list for PBXProject "CodexAccountManager" */ = {isa = XCConfigurationList; buildConfigurations = (800000000000000000000001 /* Debug */, 800000000000000000000002 /* Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		900000000000000000000002 /* Build configuration list for PBXNativeTarget "CodexAccountManager" */ = {isa = XCConfigurationList; buildConfigurations = (800000000000000000000003 /* Debug */, 800000000000000000000004 /* Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		900000000000000000000003 /* Build configuration list for PBXNativeTarget "CodexAccountManagerTests" */ = {isa = XCConfigurationList; buildConfigurations = (800000000000000000000005 /* Debug */, 800000000000000000000006 /* Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+/* End XCConfigurationList section */
+	};
+	rootObject = 500000000000000000000001 /* Project object */;
+}
