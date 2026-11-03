@@ -95,6 +95,7 @@ open "dist/Codex Account Manager.app"
 | `⌘F` | 聚焦账号搜索框 |
 | `⌘N` | 登录新账号；在 API Key 页面添加 API Key |
 | `⌘R` | 刷新当前状态 |
+| `⌘W` / `⌘M` | 关闭 / 最小化主面板 |
 | `⌘A` / `⌘C` / `⌘V` / `⌘X` | 全选 / 复制 / 粘贴 / 剪切 |
 | `Return` / `Esc` | 在配置弹窗中保存 / 取消 |
 

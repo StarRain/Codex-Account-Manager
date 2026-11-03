@@ -17,6 +17,20 @@ func makeStandardEditMenu() -> NSMenu {
 }
 
 @MainActor
+func handleStandardWindowShortcut(_ key: String, window: NSWindow) -> Bool {
+    switch key {
+    case "w": window.performClose(nil)
+    case "m": window.performMiniaturize(nil)
+    default: return false
+    }
+    return true
+}
+
+func shouldShowStatusPanel(isShown: Bool, mouseClickCount: Int) -> Bool {
+    mouseClickCount > 1 || !isShown
+}
+
+@MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSToolbarDelegate {
     private var statusItem: NSStatusItem?
     private var statusPopover: NSPopover?
@@ -71,7 +85,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
             guard let self, let window = self.mainWindow, window.isKeyWindow,
                   event.window === window, window.attachedSheet == nil, self.state?.page != .add,
                   event.modifierFlags.intersection([.command, .shift, .option, .control]) == .command,
-                  let key = event.charactersIgnoringModifiers?.lowercased(),
+                  let key = event.charactersIgnoringModifiers?.lowercased() else { return event }
+            if handleStandardWindowShortcut(key, window: window) { return nil }
+            guard
                   let content = window.contentViewController as? PanelSplitViewController,
                   content.handleShortcut(key) else { return event }
             return nil
@@ -120,9 +136,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSTo
 
     @objc private func toggleStatusPanel(_ sender: Any?) {
         guard let popover = statusPopover, let button = statusItem?.button else { return }
-        if popover.isShown {
+        let event = NSApp.currentEvent
+        let mouseClickCount = event.flatMap { $0.type == .leftMouseUp || $0.type == .leftMouseDown ? $0.clickCount : nil } ?? 1
+        if !shouldShowStatusPanel(isShown: popover.isShown, mouseClickCount: mouseClickCount) {
             popover.performClose(nil)
-        } else {
+        } else if !popover.isShown {
             state?.refresh()
             NSApp.activate(ignoringOtherApps: true)
             popover.appearance = NSApp.effectiveAppearance

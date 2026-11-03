@@ -26,6 +26,13 @@ private final class EditShortcutProbe: NSObject {
     @objc func cut(_ sender: Any?) { received.append("cut") }
 }
 
+@MainActor
+private final class WindowShortcutProbe: NSWindow {
+    var received: [String] = []
+    override func performClose(_ sender: Any?) { received.append("close") }
+    override func performMiniaturize(_ sender: Any?) { received.append("minimize") }
+}
+
 private final class UpdateURLProtocol: URLProtocol {
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
@@ -194,6 +201,26 @@ final class CodexAccountManagerTests: XCTestCase {
             XCTAssertTrue(menu.performKeyEquivalent(with: event))
             XCTAssertEqual(target.received.last, expected)
         }
+    }
+
+    @MainActor
+    func testStandardWindowShortcutsReachTheWindowResponder() throws {
+        let window = WindowShortcutProbe(contentRect: NSRect(x: 0, y: 0, width: 200, height: 120),
+                                         styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
+        let panel = PanelSplitViewController(state: AppState(demo: true))
+        for (key, expected) in [("w", "close"), ("m", "minimize")] {
+            XCTAssertFalse(panel.handleShortcut(key))
+            XCTAssertTrue(handleStandardWindowShortcut(key, window: window))
+            XCTAssertEqual(window.received.last, expected)
+        }
+        XCTAssertFalse(handleStandardWindowShortcut("c", window: window))
+    }
+
+    func testStatusPanelSingleAndDoubleClickBehavior() {
+        XCTAssertTrue(shouldShowStatusPanel(isShown: false, mouseClickCount: 1))
+        XCTAssertFalse(shouldShowStatusPanel(isShown: true, mouseClickCount: 1))
+        XCTAssertTrue(shouldShowStatusPanel(isShown: false, mouseClickCount: 2))
+        XCTAssertTrue(shouldShowStatusPanel(isShown: true, mouseClickCount: 2))
     }
 
     @MainActor
