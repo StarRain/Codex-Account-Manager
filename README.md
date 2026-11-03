@@ -1,3 +1,5 @@
+<p align="center"><strong>简体中文</strong> · <a href="README_EN.md">English</a></p>
+
 <p align="center">
   <img src="assets/cam-app-icon-trimmed.png" width="112" alt="Codex Account Manager 图标">
 </p>
