@@ -7,7 +7,7 @@
 <p align="center">在 macOS 上管理和切换 Codex 账号与 API Key。</p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-v0.5.0-3375d2">
+  <img alt="Version" src="https://img.shields.io/badge/version-v1.0.0-3375d2">
   <img alt="Platform" src="https://img.shields.io/badge/platform-macOS%2013%2B-11151d">
   <img alt="SwiftUI" src="https://img.shields.io/badge/UI-SwiftUI-3375d2">
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-3375d2"></a>
@@ -62,6 +62,12 @@ Codex 使用期间可能刷新令牌，CAM 会在切换前重新保存当前文�
 - macOS 13 或更高版本。
 - 已安装 Codex CLI。
 - 从源码构建需要 Xcode；运行应用不需要 Python。
+
+### 从发行版安装
+
+从 [GitHub Releases](https://github.com/StarRain/Codex-Account-Manager/releases/latest) 下载 ZIP，解压后将 `Codex Account Manager.app` 移到“应用程序”文件夹。
+
+发行包使用临时签名，未经过 Apple 开发者签名或公证。macOS 可能阻止打开，请在“系统设置 → 隐私与安全性”中确认是否允许运行。替换旧版本前，请先从菜单栏退出 CAM。
 
 ### 从源码构建
 

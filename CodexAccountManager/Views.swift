@@ -446,7 +446,7 @@ private struct PanelSidebar: View {
                     }
                 }.padding(.horizontal, 10)
                 Spacer()
-                Text("\(Branding.fullName) v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.5.0")")
+                Text("\(Branding.fullName) v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—")")
                     .font(.system(size: 10)).foregroundStyle(PanelColors.muted).lineLimit(1).minimumScaleFactor(0.9)
                     .frame(maxWidth: .infinity, alignment: .leading).padding(.leading, 16).padding(.bottom, 16)
             } else {
@@ -1343,7 +1343,7 @@ private struct SettingsView: View {
                     if let icon = Branding.appIcon { Image(nsImage: icon).resizable().interpolation(.high).frame(width: 56, height: 56) }
                     VStack(alignment: .leading, spacing: 4) {
                         Text(Branding.fullName).font(.system(size: 16, weight: .semibold))
-                        Text(L("版本 v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.5.0")"))
+                        Text(L("版本 v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—")"))
                             .font(.system(size: 12)).foregroundStyle(PanelColors.secondary)
                     }
                     Spacer(minLength: 8)
