@@ -65,7 +65,7 @@ Codex 使用期间可能刷新令牌，CAM 会在切换前重新保存当前文�
 
 ### 从发行版安装
 
-从 [GitHub Releases](https://github.com/StarRain/Codex-Account-Manager/releases/latest) 下载 ZIP，解压后将 `Codex Account Manager.app` 移到“应用程序”文件夹。
+从 [GitHub Releases](https://github.com/StarRain/Codex-Account-Manager/releases/latest) 下载 DMG，打开后将 `Codex Account Manager.app` 拖到“应用程序”文件夹。
 
 发行包使用临时签名，未经过 Apple 开发者签名或公证。macOS 可能阻止打开，请在“系统设置 → 隐私与安全性”中确认是否允许运行。替换旧版本前，请先从菜单栏退出 CAM。
 
@@ -79,6 +79,8 @@ open "dist/Codex Account Manager.app"
 ```
 
 也可以在 Xcode 中打开 `CodexAccountManager.xcodeproj`，选择 `CodexAccountManager` 方案构建运行。
+
+安装 `create-dmg`（`brew install create-dmg`）后，运行 `sh scripts/build-dmg.sh` 可将构建好的应用打包为 DMG 安装包。
 
 脚本生成的应用使用本地临时签名，未经过 Apple 开发者签名或公证。如果旧版 CAM 正在运行，请先从菜单栏退出，再打开新版。
 
