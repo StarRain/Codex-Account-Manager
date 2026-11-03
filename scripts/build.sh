@@ -6,8 +6,8 @@ derived_data="${CAM_DERIVED_DATA:-$project_dir/.build/xcode}"
 xcodebuild -project "$project_dir/CodexAccountManager.xcodeproj" \
   -scheme CodexAccountManager -configuration Release \
   -destination 'generic/platform=macOS' -derivedDataPath "$derived_data" build
-built_app="$derived_data/Build/Products/Release/CAM.app"
-app="${CAM_APP_PATH:-$project_dir/dist/CAM.app}"
+built_app="$derived_data/Build/Products/Release/Codex Account Manager.app"
+app="${CAM_APP_PATH:-$project_dir/dist/Codex Account Manager.app}"
 if [ "$built_app" != "$app" ]; then
   case "$app" in
     *.app) ;;

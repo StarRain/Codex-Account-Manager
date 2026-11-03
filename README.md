@@ -69,7 +69,7 @@ Codex 使用期间可能刷新令牌，CAM 会在切换前重新保存当前文�
 git clone https://github.com/StarRain/Codex-Account-Manager.git
 cd Codex-Account-Manager
 sh scripts/build.sh
-open "dist/CAM.app"
+open "dist/Codex Account Manager.app"
 ```
 
 也可以在 Xcode 中打开 `CodexAccountManager.xcodeproj`，选择 `CodexAccountManager` 方案构建运行。
@@ -127,8 +127,8 @@ xcodebuild -project CodexAccountManager.xcodeproj -scheme CodexAccountManager -d
 使用模拟数据预览，不读取或修改真实登录：
 
 ```bash
-open -n "dist/CAM.app" --args --demo
-open -n "dist/CAM.app" --args --demo --dark
+open -n "dist/Codex Account Manager.app" --args --demo
+open -n "dist/Codex Account Manager.app" --args --demo --dark
 ```
 
 测试使用临时 Codex Home、模拟凭据和本机模拟服务。测试夹具及图标生成脚本需要 Python 3；图标源文件位于 [`assets/cam-app-icon-trimmed.png`](assets/cam-app-icon-trimmed.png)。
