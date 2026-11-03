@@ -186,12 +186,22 @@ private struct ActionIcon: View {
     let image: NSImage?
     let fallback: String
     let size: CGFloat
+    var color: Color = PanelColors.secondary
 
     var body: some View {
         Group {
             if let image { Image(nsImage: image).renderingMode(.template).resizable().aspectRatio(contentMode: .fit) }
             else { Image(systemName: fallback).resizable().aspectRatio(contentMode: .fit) }
-        }.frame(width: size, height: size).foregroundColor(PanelColors.secondary)
+        }.frame(width: size, height: size).foregroundColor(color)
+    }
+}
+
+struct SwitchAccountIcon: View {
+    let size: CGFloat
+    var color: Color = PanelColors.secondary
+
+    var body: some View {
+        ActionIcon(image: Branding.switchAccountIcon, fallback: "person.crop.circle.badge.arrow.right", size: size, color: color)
     }
 }
 
@@ -239,7 +249,7 @@ private struct SwitchAccountButton: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 0) {
-                ActionIcon(image: Branding.switchAccountIcon, fallback: "person.crop.circle.badge.arrow.right", size: 16)
+                SwitchAccountIcon(size: 16)
                 Text(L("切换到【\(name)】"))
                     .font(.system(size: 11, weight: .medium)).foregroundStyle(PanelColors.text)
                     .lineLimit(1).truncationMode(.middle).padding(.leading, 7)

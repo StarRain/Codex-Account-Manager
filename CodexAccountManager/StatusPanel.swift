@@ -118,7 +118,7 @@ struct StatusPanelView: View {
                 showingSwitcher = true
             } label: {
                 HStack(spacing: 10) {
-                    Image(systemName: "arrow.left.arrow.right").frame(width: 36)
+                    SwitchAccountIcon(size: 16).frame(width: 36)
                     Text(L("切换登录"))
                     Spacer()
                     Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold))
@@ -218,7 +218,7 @@ struct StatusPanelView: View {
             }
             Spacer(minLength: 4)
             if let status { Text(status).font(.system(size: 10, weight: .medium)).foregroundStyle(PanelColors.accent) }
-            else { Image(systemName: "arrow.left.arrow.right").font(.system(size: 11)).foregroundStyle(PanelColors.muted) }
+            else { SwitchAccountIcon(size: 16, color: PanelColors.muted) }
         }.frame(maxWidth: .infinity, minHeight: 42, alignment: .leading).padding(.horizontal, 8).contentShape(Rectangle())
     }
 
