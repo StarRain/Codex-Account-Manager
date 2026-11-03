@@ -83,6 +83,41 @@ enum PanelColors {
     static let activeBorder = adaptive(0x9bbbed, 0x476b98)
 }
 
+enum PanelMenuPlacement {
+    static func origin(anchor: CGRect, container: CGSize, menu: CGSize, inset: CGFloat = 8) -> CGPoint {
+        let maximumX = max(inset, container.width - menu.width - inset)
+        let x = min(max(anchor.maxX - menu.width, inset), maximumX)
+        let below = anchor.maxY + 6
+        let preferredY = below + menu.height <= container.height - inset ? below : anchor.minY - menu.height - 6
+        let maximumY = max(inset, container.height - menu.height - inset)
+        return CGPoint(x: x, y: min(max(preferredY, inset), maximumY))
+    }
+}
+
+private enum PanelMenuTarget: Hashable {
+    case add
+    case profile(UUID)
+}
+
+private struct PanelMenuAnchorKey: PreferenceKey {
+    static var defaultValue: [PanelMenuTarget: Anchor<CGRect>] = [:]
+    static func reduce(value: inout [PanelMenuTarget: Anchor<CGRect>], nextValue: () -> [PanelMenuTarget: Anchor<CGRect>]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, latest in latest })
+    }
+}
+
+private struct SystemMenuBackground: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = .menu
+        view.blendingMode = .withinWindow
+        view.state = .active
+        return view
+    }
+
+    func updateNSView(_ view: NSVisualEffectView, context: Context) {}
+}
+
 private struct NavItem: View {
     let title: String
     let symbol: String
@@ -162,6 +197,26 @@ private struct HoverIconButton: View {
             .foregroundStyle(PanelColors.secondary)
             .background(configuration.isPressed || hovering ? PanelColors.subtle : Color.clear, in: RoundedRectangle(cornerRadius: 8))
             .opacity(isEnabled ? 1 : 0.45)
+            .onHover { hovering = $0 }
+    }
+}
+
+private struct PanelMenuButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        PanelMenuButton(configuration: configuration)
+    }
+}
+
+private struct PanelMenuButton: View {
+    let configuration: ButtonStyleConfiguration
+    @State private var hovering = false
+
+    var body: some View {
+        configuration.label.font(.system(size: 12, weight: .medium))
+            .frame(maxWidth: .infinity, alignment: .leading).frame(height: 34).padding(.horizontal, 10)
+            .contentShape(Rectangle())
+            .background(hovering || configuration.isPressed ? PanelColors.selected : Color.clear,
+                        in: RoundedRectangle(cornerRadius: 7))
             .onHover { hovering = $0 }
     }
 }
@@ -437,7 +492,9 @@ private struct ManageView: View {
     let add: (ProfileKind) -> Void
     @State private var toDelete: CodexProfile?
     @State private var query = ""
+    @State private var openMenu: PanelMenuTarget?
     @FocusState private var searchFocused: Bool
+    @FocusState private var menuFocusedItem: Int?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -449,13 +506,12 @@ private struct ManageView: View {
                 }.buttonStyle(OutlineButtonStyle()).disabled(state.busy || (section != .openai && state.currentQuotaLoading))
                     .help("刷新账号状态和额度（⌘R）")
                 if section == .overview {
-                    Menu {
-                        Button("登录新账号…") { add(.chatgpt) }
-                        Button("添加 API Key…") { add(.openai) }
-                    } label: { Label("添加", systemImage: "plus") }
-                        .menuStyle(.borderlessButton).menuIndicator(.hidden)
-                        .buttonStyle(PrimaryButtonStyle()).fixedSize().disabled(state.busy)
+                    Button { openMenu = .add } label: {
+                        Label("添加", systemImage: "plus").font(.system(size: 13, weight: .medium))
+                            .padding(.horizontal, 6).frame(height: 34).contentShape(Rectangle())
+                    }.buttonStyle(.plain).fixedSize().disabled(state.busy)
                         .help("添加账号或 API Key")
+                        .anchorPreference(key: PanelMenuAnchorKey.self, value: .bounds) { [.add: $0] }
                 } else {
                     Button { add(section == .openai ? .openai : .chatgpt) } label: {
                         Label(section == .openai ? "添加 API Key" : "登录新账号", systemImage: "plus")
@@ -475,8 +531,6 @@ private struct ManageView: View {
                     if state.demo { Label("演示模式 · 模拟数据", systemImage: "sparkles").font(.system(size: 11)).foregroundStyle(PanelColors.muted) }
                     currentStatusMessage
                     ForEach(section.kinds) { kind in group(kind) }
-                    Label("切换前请结束其他 Codex CLI 会话。", systemImage: "info.circle")
-                        .font(.system(size: 11)).foregroundStyle(PanelColors.muted).fixedSize(horizontal: false, vertical: true)
                 }.frame(maxWidth: .infinity, alignment: .leading).padding(28)
             }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             if let pending = state.profiles.first(where: { $0.id == state.pendingProfileID }) {
@@ -490,11 +544,76 @@ private struct ManageView: View {
             if !state.message.isEmpty { StatusMessage(state: state).padding(.horizontal, 24).padding(.bottom, 12) }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .onChange(of: navigation.searchFocusRequest) { _ in searchFocused = true }
+        .overlayPreferenceValue(PanelMenuAnchorKey.self) { anchors in
+            GeometryReader { geometry in
+                if let menu = openMenu, let anchor = anchors[menu] {
+                    let size = CGSize(width: min(190, max(0, geometry.size.width - 16)), height: 82)
+                    let position = PanelMenuPlacement.origin(anchor: geometry[anchor], container: geometry.size, menu: size)
+                    ZStack(alignment: .topLeading) {
+                        Color.clear.contentShape(Rectangle()).onTapGesture { openMenu = nil }
+                        Button("关闭菜单") { openMenu = nil }
+                            .keyboardShortcut(.cancelAction)
+                            .frame(width: 0, height: 0).opacity(0).accessibilityHidden(true)
+                        panelMenu(menu, size: size)
+                            .position(x: position.x + size.width / 2, y: position.y + size.height / 2)
+                    }.frame(width: geometry.size.width, height: geometry.size.height).clipped()
+                }
+            }
+        }
+        .onChange(of: navigation.searchFocusRequest) { _ in
+            openMenu = nil
+            searchFocused = true
+        }
+        .onChange(of: openMenu) { if $0 == nil { menuFocusedItem = nil } }
+        .onChange(of: section) { _ in openMenu = nil }
+        .onChange(of: state.busy) { if $0 { openMenu = nil } }
         .confirmationDialog("删除已保存的配置？", isPresented: Binding(get: { toDelete != nil }, set: { if !$0 { toDelete = nil } }), titleVisibility: .visible) {
             if let profile = toDelete { Button("删除 \(state.profileDisplayName(profile))", role: .destructive) { state.remove(profile); toDelete = nil } }
             Button("取消", role: .cancel) { toDelete = nil }
         }
+    }
+
+    private func panelMenu(_ target: PanelMenuTarget, size: CGSize) -> some View {
+        VStack(spacing: 2) {
+            switch target {
+            case .add:
+                panelMenuItem("登录新账号", symbol: "person.badge.plus", index: 0) { add(.chatgpt) }
+                panelMenuItem("添加 API Key", symbol: "key.horizontal", index: 1) { add(.openai) }
+            case .profile(let id):
+                if let profile = state.profiles.first(where: { $0.id == id }) {
+                    panelMenuItem("重新登录", symbol: "arrow.clockwise", index: 0) {
+                        state.requestActivation(profile, reauthenticate: true)
+                    }
+                    panelMenuItem("删除", symbol: "trash", role: .destructive, index: 1) { toDelete = profile }
+                }
+            }
+        }
+        .padding(6).frame(width: size.width, height: size.height)
+        .background(SystemMenuBackground().clipShape(RoundedRectangle(cornerRadius: 10)))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(PanelColors.borderStrong, lineWidth: 1).allowsHitTesting(false))
+        .shadow(color: .black.opacity(0.2), radius: 10, y: 4)
+        .onMoveCommand { direction in
+            switch direction {
+            case .up: menuFocusedItem = max(0, (menuFocusedItem ?? 0) - 1)
+            case .down: menuFocusedItem = min(1, (menuFocusedItem ?? 0) + 1)
+            default: break
+            }
+        }
+        .onExitCommand { openMenu = nil }
+    }
+
+    private func panelMenuItem(_ title: String, symbol: String, role: ButtonRole? = nil, index: Int,
+                               action: @escaping () -> Void) -> some View {
+        Button(role: role) {
+            openMenu = nil
+            action()
+        } label: {
+            HStack(spacing: 9) {
+                Image(systemName: symbol).frame(width: 16)
+                Text(title).lineLimit(1)
+            }.foregroundStyle(role == .destructive ? Color.red : PanelColors.text)
+        }
+        .buttonStyle(PanelMenuButtonStyle()).focused($menuFocusedItem, equals: index)
     }
 
     @ViewBuilder private var currentStatusMessage: some View {
@@ -588,11 +707,10 @@ private struct ManageView: View {
                         SwitchAccountButton(name: name, disabled: state.busy) { state.requestActivation(profile) }
                     }
                     if !active && profile.kind == .chatgpt && profile.hasSecret {
-                        Menu {
-                            Button("重新登录…") { state.requestActivation(profile, reauthenticate: true) }
-                            Button("删除…", role: .destructive) { toDelete = profile }
-                        } label: { Image(systemName: "ellipsis").frame(width: 22, height: 28) }
-                            .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().disabled(state.busy).help("更多操作")
+                        Button { openMenu = .profile(profile.id) } label: { Image(systemName: "ellipsis") }
+                            .buttonStyle(IconButtonStyle()).disabled(state.busy).help("更多操作")
+                            .accessibilityLabel("更多操作")
+                            .anchorPreference(key: PanelMenuAnchorKey.self, value: .bounds) { [.profile(profile.id): $0] }
                     } else if active && profile.kind == .chatgpt {
                         Button("重新登录") { state.requestActivation(profile, reauthenticate: true) }
                             .buttonStyle(OutlineButtonStyle()).fixedSize().disabled(state.busy)

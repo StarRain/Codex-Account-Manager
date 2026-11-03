@@ -26,6 +26,25 @@ private final class EditShortcutProbe: NSObject {
 }
 
 final class CodexAccountManagerTests: XCTestCase {
+    func testPanelMenusStayInsideWindowAtEdges() {
+        let container = CGSize(width: 512, height: 480)
+        let menu = CGSize(width: 190, height: 82)
+        let anchors = [
+            CGRect(x: 472, y: 10, width: 32, height: 32),
+            CGRect(x: 472, y: 430, width: 32, height: 32),
+            CGRect(x: 0, y: 0, width: 24, height: 24),
+        ]
+        for anchor in anchors {
+            let frame = CGRect(origin: PanelMenuPlacement.origin(anchor: anchor, container: container, menu: menu), size: menu)
+            XCTAssertGreaterThanOrEqual(frame.minX, 8)
+            XCTAssertGreaterThanOrEqual(frame.minY, 8)
+            XCTAssertLessThanOrEqual(frame.maxX, container.width - 8)
+            XCTAssertLessThanOrEqual(frame.maxY, container.height - 8)
+        }
+        let bottom = PanelMenuPlacement.origin(anchor: anchors[1], container: container, menu: menu)
+        XCTAssertLessThan(bottom.y + menu.height, anchors[1].minY)
+    }
+
     func testActionIconsLoadFromAppBundleAsTemplates() {
         XCTAssertTrue(Branding.editIcon?.isTemplate == true)
         XCTAssertTrue(Branding.switchAccountIcon?.isTemplate == true)

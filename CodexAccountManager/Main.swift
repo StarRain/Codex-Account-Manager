@@ -1,5 +1,4 @@
 import AppKit
-import Combine
 import SwiftUI
 
 @MainActor
@@ -18,12 +17,11 @@ func makeStandardEditMenu() -> NSMenu {
 }
 
 @MainActor
-final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate, NSToolbarDelegate {
+final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSToolbarDelegate {
     private var statusItem: NSStatusItem?
+    private var statusPopover: NSPopover?
     private var mainWindow: NSWindow?
-    private let menu = NSMenu()
     private var state: AppState?
-    private var observations = Set<AnyCancellable>()
     private var shortcutMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -44,21 +42,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             self?.requestSwitch(profile, reauthenticate: reauthenticate)
         }
         self.state = state
-        state.objectWillChange
-            .receive(on: RunLoop.main)
-            .debounce(for: .milliseconds(30), scheduler: RunLoop.main)
-            .sink { [weak self] _ in self?.rebuildMenu() }
-            .store(in: &observations)
+        let panel = StatusPanelView(state: state,
+                                    close: { [weak self] in self?.statusPopover?.performClose(nil) },
+                                    openMain: { [weak self] in self?.openPanel(nil) },
+                                    openSettings: { [weak self] in self?.openSettingsFromStatus() },
+                                    quit: { [weak self] in self?.quit(nil) })
+        let hosting = NSHostingController(rootView: panel)
+        hosting.sizingOptions = []
+        let popover = NSPopover()
+        popover.behavior = .transient
+        popover.contentSize = NSSize(width: 320, height: 270)
+        popover.contentViewController = hosting
+        statusPopover = popover
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = item.button {
             button.image = Branding.menuBarImage()
             button.toolTip = Branding.appName
+            button.target = self
+            button.action = #selector(toggleStatusPanel(_:))
         }
-        menu.autoenablesItems = false
-        menu.delegate = self
-        item.menu = menu
         statusItem = item
-        rebuildMenu()
         shortcutMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, let window = self.mainWindow, window.isKeyWindow,
                   event.window === window, window.attachedSheet == nil, self.state?.page != .add,
@@ -110,67 +113,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         NSApp.mainMenu = mainMenu
     }
 
-    func menuNeedsUpdate(_ menu: NSMenu) {
-        guard menu === self.menu else { return }
-        state?.refresh()
-        rebuildMenu()
+    @objc private func toggleStatusPanel(_ sender: Any?) {
+        guard let popover = statusPopover, let button = statusItem?.button else { return }
+        if popover.isShown {
+            popover.performClose(nil)
+        } else {
+            state?.refresh()
+            NSApp.activate(ignoringOtherApps: true)
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        }
     }
 
-    private func item(_ title: String, action: Selector? = nil, key: String = "") -> NSMenuItem {
-        let result = NSMenuItem(title: title, action: action, keyEquivalent: key)
-        result.target = self
-        return result
-    }
-
-    private func rebuildMenu() {
-        guard let state else { return }
-        menu.removeAllItems()
-        let open = item("打开主面板…", action: #selector(openPanel(_:)))
-        menu.addItem(open)
-        menu.addItem(.separator())
-        for kind in ProfileKind.supported {
-            let title = kind == .chatgpt ? "官方账号" : "官方 API Key"
-            let group = item(title)
-            let submenu = NSMenu(title: title)
-            submenu.autoenablesItems = false
-            let profiles = state.profiles.filter { $0.kind == kind && state.shouldDisplayProfile($0) }
-            let currentLogin = state.currentLoginWithoutProfile(for: kind)
-            if let currentLogin {
-                let current = item(currentLogin.name + "（当前登录）")
-                current.isEnabled = false
-                current.state = state.current.isOfficialProvider ? .on : .off
-                submenu.addItem(current)
-                if !profiles.isEmpty { submenu.addItem(.separator()) }
-            }
-            if profiles.isEmpty && currentLogin == nil {
-                let empty = item("暂无配置")
-                empty.isEnabled = false
-                submenu.addItem(empty)
-            } else if !profiles.isEmpty {
-                for profile in profiles {
-                    let entry = item(state.profileDisplayName(profile), action: #selector(selectProfile(_:)))
-                    entry.representedObject = profile.id.uuidString
-                    entry.isEnabled = !state.busy && !state.isCurrent(profile)
-                    entry.state = state.isCurrent(profile) ? .on : .off
-                    submenu.addItem(entry)
-                }
-            }
-            group.submenu = submenu
-            menu.addItem(group)
+    private func openSettingsFromStatus() {
+        openPanel(nil)
+        if let content = mainWindow?.contentViewController as? PanelSplitViewController {
+            _ = content.handleShortcut(",")
         }
-        if state.busy {
-            menu.addItem(.separator())
-            let progress = item(state.message.isEmpty ? "正在切换…" : state.message)
-            progress.isEnabled = false
-            menu.addItem(progress)
-        } else if let id = state.pendingProfileID, let profile = state.profiles.first(where: { $0.id == id }) {
-            menu.addItem(.separator())
-            let pending = item("待切换：\(state.profileDisplayName(profile))")
-            pending.isEnabled = false
-            menu.addItem(pending)
-        }
-        menu.addItem(.separator())
-        menu.addItem(item("退出 \(Branding.appName)", action: #selector(quit(_:)), key: "q"))
     }
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
@@ -224,7 +182,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             } else { window.center() }
             mainWindow = window
         }
-        if !window.isVisible && !window.isMiniaturized {
+        let openingWindow = !window.isVisible && !window.isMiniaturized
+        if openingWindow {
             state.page = .manage
             state.editing = nil
             state.editingCurrent = nil
@@ -233,6 +192,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         if window.isMiniaturized { window.deminiaturize(nil) }
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
+        if openingWindow {
+            DispatchQueue.main.async { [weak window] in
+                guard let window, window.isVisible, window.isKeyWindow, window.attachedSheet == nil else { return }
+                window.makeFirstResponder(nil)
+            }
+        }
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
@@ -250,12 +215,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         openPanel(nil)
         return false
-    }
-
-    @objc private func selectProfile(_ sender: NSMenuItem) {
-        guard let state, let value = sender.representedObject as? String,
-              let id = UUID(uuidString: value), let profile = state.profiles.first(where: { $0.id == id }) else { return }
-        state.requestActivation(profile)
     }
 
     private func requestSwitch(_ profile: CodexProfile, reauthenticate: Bool) {

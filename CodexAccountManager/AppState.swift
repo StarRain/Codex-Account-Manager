@@ -298,7 +298,7 @@ final class AppState: ObservableObject {
         if demo {
             do {
                 profiles = try profilesWithCurrentAlias(alias, current: selected, profiles: profiles)
-                editingCurrent = nil; page = .manage; setMessage("别名已更新。")
+                editingCurrent = nil; page = .manage; setMessage("")
             } catch { setMessage(error.localizedDescription, error: true) }
             return
         }
@@ -319,7 +319,7 @@ final class AppState: ObservableObject {
                 switch result {
                 case .success:
                     self.profiles = updatedProfiles; self.editingCurrent = nil; self.page = .manage
-                    self.diagnostics.record(.profileSaved); self.setMessage("别名已更新。")
+                    self.diagnostics.record(.profileSaved); self.setMessage("")
                     self.refresh()
                 case .failure(let error):
                     self.diagnostics.record(.profileSaveFailed, level: .error, reason: .classify(error))
@@ -618,7 +618,7 @@ final class AppState: ObservableObject {
             }
             profiles = next; editing = nil; page = .manage
             if !demo { diagnostics.record(.profileSaved) }
-            setMessage(demo ? "已更新模拟配置。" : "配置已保存；点击该配置可应用更改。")
+            setMessage("")
             return true
         } catch { if !demo { diagnostics.record(.profileSaveFailed, level: .error, reason: .classify(error)) }; setMessage(error.localizedDescription, error: true); return false }
     }
