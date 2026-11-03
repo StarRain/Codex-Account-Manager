@@ -126,8 +126,8 @@ xcodebuild -project CodexAccountManager.xcodeproj -scheme CodexAccountManager -d
 使用模拟数据预览，不读取或修改真实登录：
 
 ```bash
-"dist/CAM.app/Contents/MacOS/CodexAccountSwitcher" --demo
-"dist/CAM.app/Contents/MacOS/CodexAccountSwitcher" --demo --dark
+open -n "dist/CAM.app" --args --demo
+open -n "dist/CAM.app" --args --demo --dark
 ```
 
 测试使用临时 Codex Home、模拟凭据和本机模拟服务。测试夹具及图标生成脚本需要 Python 3；图标源文件位于 [`assets/cam-app-icon-trimmed.png`](assets/cam-app-icon-trimmed.png)。
