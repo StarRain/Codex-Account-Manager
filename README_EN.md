@@ -23,7 +23,7 @@ Codex Account Manager (CAM) is a local macOS app for managing ChatGPT accounts a
 
 ## Screenshots
 
-![CAM main panel](docs/assets/cam-screenshot-en.jpg)
+![CAM main panel](docs/assets/cam-screenshot-en.png)
 
 The screenshot is from demo mode; the accounts and usage figures are sample data.
 
