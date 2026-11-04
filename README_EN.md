@@ -11,7 +11,7 @@
 <p align="center"><a href="https://starrain.github.io/Codex-Account-Manager/en/">Website</a> · <a href="https://github.com/StarRain/Codex-Account-Manager/releases/latest">Download the latest release</a></p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-v1.0.0-3375d2">
+  <img alt="Version" src="https://img.shields.io/badge/version-v1.0.1-3375d2">
   <img alt="Platform" src="https://img.shields.io/badge/platform-macOS%2013%2B-11151d">
   <img alt="SwiftUI" src="https://img.shields.io/badge/UI-SwiftUI-3375d2">
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-3375d2"></a>
