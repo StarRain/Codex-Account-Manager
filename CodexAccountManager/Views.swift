@@ -298,6 +298,50 @@ private struct PanelCard<Content: View>: View {
     }
 }
 
+struct CardDetailsSection<Overview: View, Details: View>: View {
+    let title: String
+    let id: String
+    @ViewBuilder let overview: Overview
+    @ViewBuilder let details: Details
+    @State private var isExpanded = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) {
+                    isExpanded.toggle()
+                }
+            } label: {
+                HStack(spacing: 12) {
+                    Group {
+                        if isExpanded {
+                            Text(title).font(.system(size: 11, weight: .medium)).foregroundStyle(PanelColors.secondary)
+                        } else {
+                            overview
+                        }
+                    }.frame(maxWidth: .infinity, alignment: .leading)
+                    HStack(spacing: 5) {
+                        Text(isExpanded ? L("收起详情") : L("展开详情"))
+                        Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold))
+                            .rotationEffect(.degrees(isExpanded ? 180 : 0))
+                    }.font(.system(size: 11)).foregroundStyle(PanelColors.accent).fixedSize()
+                }
+                .padding(.vertical, 6).frame(minHeight: 28).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("card-details-\(id)")
+            .accessibilityValue(isExpanded ? L("已展开") : L("已收起"))
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 12) {
+                    Rectangle().fill(PanelColors.border).frame(height: 1)
+                    details
+                }.padding(.top, 6).padding(.bottom, 6).transition(.opacity)
+            }
+        }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 private struct InputFrame: ViewModifier {
     var focused = false
 
@@ -308,7 +352,48 @@ private struct InputFrame: ViewModifier {
     }
 }
 
-private struct ReadOnlyAPIKeyField: NSViewRepresentable {
+struct KeyInputField: View {
+    let title: String
+    @Binding var text: String
+    let prompt: String
+    var isReadOnly = false
+    var prepareReveal: (() -> Bool)?
+    @State private var revealed = false
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Group {
+                if isReadOnly {
+                    ReadOnlyKeyField(title: title, value: text, placeholder: prompt, revealed: revealed)
+                        .frame(height: 20)
+                } else if revealed {
+                    TextField(title, text: $text, prompt: Text(prompt))
+                        .textFieldStyle(.plain).focused($focused).accessibilityLabel(title)
+                } else {
+                    SecureField(title, text: $text, prompt: Text(prompt))
+                        .textFieldStyle(.plain).focused($focused).accessibilityLabel(title)
+                }
+            }
+            Button {
+                if !revealed, prepareReveal?() == false { return }
+                revealed.toggle()
+                if !isReadOnly { DispatchQueue.main.async { focused = true } }
+            } label: {
+                Image(systemName: revealed ? "eye.slash" : "eye")
+                    .frame(width: 28, height: 28).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain).foregroundStyle(PanelColors.secondary)
+            .help(revealed ? L("隐藏 \(title)") : L("显示 \(title)"))
+            .accessibilityLabel(revealed ? L("隐藏 \(title)") : L("显示 \(title)"))
+        }
+        .modifier(InputFrame(focused: focused))
+        .onDisappear { revealed = false }
+    }
+}
+
+private struct ReadOnlyKeyField: NSViewRepresentable {
+    let title: String
     let value: String
     let placeholder: String
     let revealed: Bool
@@ -322,7 +407,7 @@ private struct ReadOnlyAPIKeyField: NSViewRepresentable {
         field.font = .systemFont(ofSize: 13)
         field.textColor = .labelColor
         field.cell?.isScrollable = true
-        field.setAccessibilityLabel("API Key")
+        field.setAccessibilityLabel(title)
         return field
     }
 
@@ -511,6 +596,7 @@ private struct PanelContent: View {
         .sheet(isPresented: Binding(get: { state.page == .add }, set: { visible in
             if !visible && state.page == .add { state.editing = nil; state.editingCurrent = nil; state.page = .manage; state.setMessage("") }
         })) { AddView(state: state, initialKind: navigation.newKind).interactiveDismissDisabled(state.accountLogin != nil || (state.editingCurrent != nil && state.busy)) }
+        .sheet(item: $state.editingAPIUsage) { profile in APIUsageSettingsView(state: state, profile: profile) }
     }
 }
 
@@ -569,15 +655,25 @@ private struct ManageView: View {
     @FocusState private var searchFocused: Bool
     @FocusState private var menuFocusedItem: Int?
 
+    private var isRefreshing: Bool { state.quotaRefreshInProgress || state.apiUsageRefreshInProgress }
+
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 PageHeading(title: section.title, subtitle: section.subtitle, symbol: section.icon)
                 Spacer()
                 Button { state.refresh(retryMissingPlanTypes: true) } label: {
-                    Label(section == .openai ? L("刷新") : L("刷新额度"), systemImage: "arrow.clockwise")
-                }.buttonStyle(OutlineButtonStyle()).disabled(state.busy || (section != .openai && state.currentQuotaLoading))
+                    Label {
+                        Text(section == .openai ? L("刷新") : L("刷新额度"))
+                    } icon: {
+                        Group {
+                            if isRefreshing { ProgressView().controlSize(.small) }
+                            else { Image(systemName: "arrow.clockwise") }
+                        }.frame(width: 16, height: 16).accessibilityHidden(true)
+                    }
+                }.buttonStyle(OutlineButtonStyle()).disabled(state.busy || isRefreshing)
                     .help(L("刷新账号状态和额度（⌘R）"))
+                    .accessibilityValue(isRefreshing ? (section == .openai ? L("正在查询 API 用量…") : L("正在刷新额度…")) : "")
                 if section == .overview {
                     Button { openMenu = .add } label: {
                         Label(L("添加"), systemImage: "plus").font(.system(size: 13, weight: .medium))
@@ -756,7 +852,18 @@ private struct ManageView: View {
                     currentBadge(active ? L("使用中") : L("当前登录"))
                 }.padding(.horizontal, 16).padding(.vertical, 12).frame(minHeight: 68)
                 if current.kind == .chatgpt {
-                    quotaDetails(state.currentQuotaPresentation).padding(.horizontal, 16).padding(.bottom, 14)
+                    accountQuotaSection(state.currentQuotaPresentation, id: "current-account")
+                        .padding(.horizontal, 16).padding(.bottom, 8)
+                } else if current.kind == .openai {
+                    CardDetailsSection(title: L("API 用量"), id: "current-api-key") {
+                        Text(L("未配置用量查询")).font(.system(size: 11)).foregroundStyle(PanelColors.muted)
+                    } details: {
+                        HStack(spacing: 10) {
+                            Text(L("保存当前配置后，可配置 API 用量查询。")).font(.system(size: 11)).foregroundStyle(PanelColors.muted)
+                            Spacer()
+                            Button(L("保存当前配置")) { state.beginEditingCurrentAlias() }.disabled(state.busy)
+                        }
+                    }.padding(.horizontal, 16).padding(.bottom, 8)
                 }
             }
         }
@@ -794,7 +901,10 @@ private struct ManageView: View {
                     }
                 }.padding(.horizontal, 16).padding(.vertical, 12).frame(minHeight: 68)
                 if profile.kind == .chatgpt {
-                    quotaDetails(state.quotaPresentation(for: profile)).padding(.horizontal, 16).padding(.bottom, 14)
+                    accountQuotaSection(state.quotaPresentation(for: profile), id: profile.id.uuidString)
+                        .padding(.horizontal, 16).padding(.bottom, 8)
+                } else if profile.kind == .openai {
+                    APIUsageCard(state: state, profile: profile).padding(.horizontal, 16).padding(.bottom, 8)
                 }
             }
         }
@@ -821,6 +931,41 @@ private struct ManageView: View {
                 Text("OpenAI API Key").font(.system(size: 11)).foregroundStyle(PanelColors.secondary)
             }
         }
+    }
+
+    @ViewBuilder private func accountQuotaSection(_ presentation: QuotaPresentation, id: String) -> some View {
+        if let quota = presentation.value {
+            CardDetailsSection(title: L("账号额度"), id: id) {
+                HStack(spacing: 8) {
+                    if presentation.isLoading { ProgressView().controlSize(.mini) }
+                    Text(quotaOverview(quota)).lineLimit(1).truncationMode(.tail).monospacedDigit()
+                        .help(quotaOverview(quota) + " · " + L("更新于 \(QuotaTime.format(quota.updatedAt))"))
+                    if presentation.failed {
+                        Label(L("刷新失败"), systemImage: "exclamationmark.circle").foregroundStyle(.orange).fixedSize()
+                    } else if presentation.isCached {
+                        Text(L("缓存")).font(.system(size: 10)).foregroundStyle(PanelColors.muted).fixedSize()
+                    }
+                }.font(.system(size: 11)).foregroundStyle(PanelColors.secondary)
+            } details: {
+                quotaDetails(presentation)
+            }
+        } else {
+            quotaDetails(presentation).padding(.vertical, 6)
+        }
+    }
+
+    private func quotaOverview(_ quota: AccountQuota) -> String {
+        guard let bucket = quota.buckets.first else {
+            return quota.resetCredits.map { L("可用重置次数：\($0)") } ?? L("额度尚未查询")
+        }
+        var values = bucket.windows.map { "\($0.title) " + L("剩余 \($0.remainingPercent)%") }
+        if values.isEmpty, let individual = bucket.individualLimit {
+            values.append(L("剩余 \(individual.remainingPercent)%"))
+        }
+        if values.isEmpty, let credits = bucket.credits { values.append(localizedQuotaCredits(credits)) }
+        if let reached = quota.buckets.compactMap(\.reached).first { values.insert(Localization.text(reached), at: 0) }
+        if let title = bucket.title { values.insert(title, at: 0) }
+        return values.joined(separator: "  ·  ")
     }
 
     @ViewBuilder private func quotaDetails(_ presentation: QuotaPresentation) -> some View {
@@ -927,13 +1072,12 @@ private struct AddView: View {
     @State private var kind: ProfileKind = .chatgpt
     @State private var loginMethod: ChatGPTLoginMethod = .browser
     @State private var openBrowser = true
-    @State private var showSecret = false
     @State private var model = ""
     @State private var secret = ""
     @State private var loadedSecret: String?
     @FocusState private var focusedField: InputField?
 
-    private enum InputField: Hashable { case name, secret }
+    private enum InputField: Hashable { case name }
     private var isEditingCurrent: Bool { state.editingCurrent != nil }
     private var isEditing: Bool { state.editing != nil || isEditingCurrent }
     private var isNewChatGPT: Bool { !isEditing && kind == .chatgpt }
@@ -994,27 +1138,9 @@ private struct AddView: View {
                 if kind == .openai {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("API Key").font(.system(size: 12, weight: .medium))
-                        HStack(spacing: 8) {
-                            Group {
-                                if isReadOnlyCurrentAPI {
-                                    ReadOnlyAPIKeyField(value: secret, placeholder: secretPrompt, revealed: showSecret)
-                                        .frame(height: 20)
-                                } else if showSecret {
-                                    TextField("API Key", text: $secret, prompt: Text(secretPrompt))
-                                        .textFieldStyle(.plain).focused($focusedField, equals: .secret).accessibilityLabel("API Key")
-                                } else {
-                                    SecureField("API Key", text: $secret, prompt: Text(secretPrompt))
-                                        .textFieldStyle(.plain).focused($focusedField, equals: .secret).accessibilityLabel("API Key")
-                                }
-                            }
-                            Button { toggleSecretVisibility() } label: {
-                                Image(systemName: showSecret ? "eye.slash" : "eye")
-                                    .frame(width: 28, height: 28).contentShape(Rectangle())
-                            }
-                                .buttonStyle(.plain).foregroundStyle(PanelColors.secondary)
-                                .help(showSecret ? L("隐藏 API Key") : L("显示 API Key"))
-                                .accessibilityLabel(showSecret ? L("隐藏 API Key") : L("显示 API Key"))
-                        }.modifier(InputFrame(focused: focusedField == .secret))
+                        KeyInputField(title: "API Key", text: $secret, prompt: secretPrompt,
+                                      isReadOnly: isReadOnlyCurrentAPI,
+                                      prepareReveal: { !secret.isEmpty || loadedSecret != nil || loadExistingSecret() })
                         Text(isReadOnlyCurrentAPI ? L("当前使用的密钥由 Codex 管理，只能查看；更换请添加新的 API Key。") :
                              L("密钥保存在本地凭据文件中，保存时不会验证有效性。"))
                             .font(.system(size: 11)).foregroundStyle(PanelColors.muted)
@@ -1057,7 +1183,7 @@ private struct AddView: View {
                 if kind == .openai { _ = loadExistingSecret() }
                 focusedField = isNewChatGPT ? nil : .name
             }
-            .onDisappear { secret = ""; loadedSecret = nil; showSecret = false }
+            .onDisappear { secret = ""; loadedSecret = nil }
     }
 
     @discardableResult private func loadExistingSecret() -> Bool {
@@ -1074,12 +1200,6 @@ private struct AddView: View {
             state.setMessage(error.localizedDescription, error: true)
             return false
         }
-    }
-
-    private func toggleSecretVisibility() {
-        if !showSecret && secret.isEmpty && loadedSecret == nil && !loadExistingSecret() { return }
-        showSecret.toggle()
-        if !isReadOnlyCurrentAPI { DispatchQueue.main.async { focusedField = .secret } }
     }
 
     private func loginOption(_ method: ChatGPTLoginMethod) -> some View {

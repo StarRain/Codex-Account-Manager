@@ -42,6 +42,7 @@ Codex Account Manager（CAM）是一个本地 macOS 应用，用于管理 ChatGP
 - 将 Codex 返回的会员类型归类显示为 `Free`、`Plus`、`Pro`、`Team` 或 `Unknown`；实际订阅名称以 ChatGPT 设置为准。
 - 显示服务端返回的额度周期、剩余比例、重置时间和积分等信息。
 - 手动刷新当前登录的额度；其他账号显示上次获取的结果。
+- 为 API Key 配置独立的 Admin API Key 后，显示本月费用、输入/输出 Token、缓存输入 Token 和生成请求数；填写项目 ID 后还可查看模型速率上限。
 - API Key 的计费与 ChatGPT 额度分开，本应用不显示 API Key 余额。
 
 ### 使用体验
@@ -49,6 +50,7 @@ Codex Account Manager（CAM）是一个本地 macOS 应用，用于管理 ChatGP
 - 菜单栏和主面板均可切换配置；主窗口打开时显示程序坞图标。
 - 支持浅色、深色与跟随系统外观，以及开机自启和静默启动。
 - 提供账号搜索、面板快捷键和本地诊断日志。
+- 账号与 API Key 卡片默认展示概览，可展开查看详情；刷新期间显示加载动画。
 - 可配置 Codex 目录、应用数据目录和会话历史分组。
 - 在“关于”页面手动检查 GitHub 上的最新正式版本，并打开发布页面下载。
 
@@ -113,8 +115,11 @@ open "dist/Codex Account Manager.app"
 3. 在主面板或菜单栏中选择已保存的配置，切换前 CAM 会备份当前登录。
 4. 如果 Codex 桌面版正在运行，可以选择立即重启或等它退出后再切换。
 5. 点击“刷新额度”可重新查询当前 ChatGPT 登录；凭据失效时可对已保存的账号选择“重新登录”。
+6. 展开 API Key 卡片详情，点击“配置查询”，填写 Admin API Key，再选择“保存并查询”。项目 ID 和 API Key ID 可选；留空时明确显示整个组织的统计。普通调用密钥不能替代管理员密钥。
 
 浏览器已经登录其他账号时，可以关闭自动打开浏览器，复制登录链接到其他浏览器或无痕窗口。设备代码登录需要在 ChatGPT 安全设置或工作区权限中启用。
+
+API 用量按 UTC 自然月统计。费用来自官方 Costs API，Token 和请求数来自 Completions Usage API，项目限额来自 Project Rate Limits API；服务端数据可能延迟。刷新失败时保留并标注本月上次结果，跨月不会把上个月的结果当成本月数据。模型速率上限不代表剩余次数。更换调用密钥后需重新配置查询范围。
 
 ### 面板快捷键
 
@@ -141,6 +146,7 @@ open "dist/Codex Account Manager.app"
 
 - 应用数据默认存放在 `~/.cam`：账号信息位于 `profiles.json`，凭据位于 `credentials/`，诊断日志位于 `diagnostics.log`。
 - 凭据文件未加密；凭据目录权限为 `0700`，文件权限为 `0600`。请勿提交或分享这些文件。
+- 用量查询的 Admin API Key 单独存放在 `credentials/<配置 ID>.admin.json`，不会写入 Codex 登录文件；仅发送至官方 `api.openai.com` 的只读查询接口。移除查询配置会删除对应管理员密钥，迁移应用数据目录时会一并复制。
 - Codex 的文件凭据默认位于 `~/.codex/auth.json`。CAM 启动时读取自身环境中的 `CODEX_HOME`，也可在设置中手动指定目录。
 - 从 Finder 启动的应用不一定能继承仅在终端中设置的环境变量；桌面版和 CLI 需要使用相同的 Codex Home 才能共享登录。
 - 账号授权使用临时目录，完成或取消后会清理；异常退出时系统临时目录中可能残留文件。

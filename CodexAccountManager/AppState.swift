@@ -39,6 +39,7 @@ final class AppState: ObservableObject {
     @Published var page: Page = .menu
     @Published var editing: CodexProfile?
     @Published var editingCurrent: CurrentCodex?
+    @Published var editingAPIUsage: CodexProfile?
     @Published var codexHome = ""
     @Published var codexPath = ""
     @Published var preserveSharedHistory = true
@@ -58,6 +59,7 @@ final class AppState: ObservableObject {
     @Published private(set) var currentQuotaFailed = false
     @Published private(set) var updateStatus: UpdateCheckStatus = .idle
     @Published private(set) var quotaByAccount: [String: AccountQuota] = [:]
+    @Published private(set) var apiUsageByProfile: [UUID: APIUsagePresentation] = [:]
     @Published private(set) var accountLogin: AccountLoginProgress?
     var onActivationFailure: ((String) -> Void)?
     var onRequestActivation: ((CodexProfile, Bool) -> Void)?
@@ -73,6 +75,11 @@ final class AppState: ObservableObject {
     private let preferences: UserDefaults
     private let diagnostics: DiagnosticLog
     private let updateChecker: GitHubUpdateChecker
+    private let apiUsageClient: OpenAIUsageClient
+    private var apiUsageTasks: [UUID: Task<Void, Never>] = [:]
+    private var apiUsageGenerations: [UUID: UUID] = [:]
+    private var apiUsageLastAttempts: [UUID: Date] = [:]
+    private var demoAdminKeys: [UUID: String] = [:]
     private let refreshGroup = DispatchGroup()
     private var refreshGeneration = 0
     private var planRecoveryAttempts = Set<UUID>()
@@ -85,7 +92,7 @@ final class AppState: ObservableObject {
 
     init(demo: Bool = false, storage: ProfileStore? = nil, preferences: UserDefaults = .standard,
          environment: [String: String] = ProcessInfo.processInfo.environment,
-         updateChecker: GitHubUpdateChecker = GitHubUpdateChecker()) {
+         updateChecker: GitHubUpdateChecker = GitHubUpdateChecker(), apiUsageClient: OpenAIUsageClient = OpenAIUsageClient()) {
         let storedPath = demo ? nil : preferences.string(forKey: ProfileStore.preferenceKey)
         let previousDirectory = storedPath.flatMap { $0.hasPrefix("/") ? URL(fileURLWithPath: $0, isDirectory: true) : nil }
         let selectedStore: ProfileStore
@@ -100,6 +107,7 @@ final class AppState: ObservableObject {
         let level = DiagnosticLevel(rawValue: preferences.string(forKey: "diagnosticLevel") ?? "info") ?? .info
         self.demo = demo; self.storage = selectedStore; self.preferences = preferences
         self.updateChecker = updateChecker
+        self.apiUsageClient = apiUsageClient
         let selectedLanguage = demo ? AppLanguage.simplifiedChinese : (AppLanguage(rawValue: preferences.string(forKey: "language") ?? "") ?? .simplifiedChinese)
         language = selectedLanguage
         Localization.select(selectedLanguage)
@@ -139,6 +147,9 @@ final class AppState: ObservableObject {
                 QuotaWindow(id: "primary", usedPercent: 35, durationMinutes: 300, resetsAt: now.addingTimeInterval(7_200)),
                 QuotaWindow(id: "secondary", usedPercent: 20, durationMinutes: 10_080, resetsAt: now.addingTimeInterval(345_600))
             ], credits: nil, individualLimit: nil, reached: nil)], resetCredits: nil, updatedAt: now.addingTimeInterval(-900))
+            profiles[2].apiUsageSettings = APIUsageSettings(projectID: "proj_demo", apiKeyID: nil)
+            demoAdminKeys[profiles[2].id] = "sk-admin-demo-not-real"
+            refreshAPIUsage(for: profiles[2].id)
         } else {
             diagnostics.record(.started)
             do {
@@ -147,6 +158,11 @@ final class AppState: ObservableObject {
                     if let identity = profile.accountID, let quota = profile.lastQuota {
                         if let previous = quotaByAccount[identity], previous.updatedAt > quota.updatedAt { continue }
                         quotaByAccount[identity] = quota
+                    }
+                }
+                for profile in profiles where profile.kind == .openai && profile.apiUsageSettings != nil {
+                    if let snapshot = profile.lastAPIUsage, snapshot.monthStart == APIUsageFormat.monthStart(at: Date()) {
+                        apiUsageByProfile[profile.id] = APIUsagePresentation(snapshot: snapshot)
                     }
                 }
             } catch { setMessage(L("无法读取已保存的配置，请检查本机文件。"), error: true); diagnostics.record(.settingsFailed, level: .error) }
@@ -297,6 +313,126 @@ final class AppState: ObservableObject {
 
     var quotaRefreshInProgress: Bool { currentStatusLoading || currentQuotaLoading }
 
+    var apiUsageRefreshInProgress: Bool { apiUsageByProfile.values.contains(where: \.isLoading) }
+
+    var currentAPIUsageProfile: CodexProfile? { profiles.first { $0.kind == .openai && matchesCurrentLogin($0) } }
+
+    func apiUsagePresentation(for id: UUID) -> APIUsagePresentation {
+        var value = apiUsageByProfile[id] ?? APIUsagePresentation()
+        if value.snapshot?.monthStart != APIUsageFormat.monthStart(at: Date()) { value.snapshot = nil }
+        return value
+    }
+
+    func savedAdminKey(for id: UUID) throws -> String {
+        guard profiles.contains(where: { $0.id == id && $0.kind == .openai && $0.apiUsageSettings != nil }) else {
+            throw APIUsageError.missingAdminKey
+        }
+        guard let key = demo ? demoAdminKeys[id] : try credentials.loadAdminKey(id: id) else {
+            throw APIUsageError.missingAdminKey
+        }
+        return key
+    }
+
+    func configureAPIUsage(for id: UUID, adminKey: String, projectID: String, apiKeyID: String) throws {
+        guard !busy, let index = profiles.firstIndex(where: { $0.id == id && $0.kind == .openai }) else { throw StoreError.missingSecret }
+        let settings = try APIUsageSettings.validated(projectID: projectID, apiKeyID: apiKeyID)
+        let previous = demo ? demoAdminKeys[id] : try credentials.loadAdminKey(id: id)
+        let input = adminKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let key = input.isEmpty ? previous : try APIUsageSettings.validatedAdminKey(input) else { throw APIUsageError.missingAdminKey }
+        var next = profiles
+        next[index].apiUsageSettings = settings
+        next[index].lastAPIUsage = nil
+        if !demo {
+            try credentials.saveAdminKey(key, id: id)
+            do { try storage.save(next) }
+            catch {
+                if let previous { try credentials.saveAdminKey(previous, id: id) }
+                else { try credentials.deleteAdminKey(id: id) }
+                throw error
+            }
+        } else { demoAdminKeys[id] = key }
+        cancelAPIUsage(for: id)
+        apiUsageByProfile.removeValue(forKey: id)
+        profiles = next
+        refreshAPIUsage(for: id, force: true)
+    }
+
+    func removeAPIUsageConfiguration(for id: UUID) throws {
+        guard !busy, let index = profiles.firstIndex(where: { $0.id == id && $0.kind == .openai }) else { throw StoreError.missingSecret }
+        var next = profiles
+        next[index].apiUsageSettings = nil
+        next[index].lastAPIUsage = nil
+        if !demo {
+            let previous = try credentials.loadAdminKey(id: id)
+            try credentials.deleteAdminKey(id: id)
+            do { try storage.save(next) }
+            catch {
+                if let previous { try credentials.saveAdminKey(previous, id: id) }
+                throw error
+            }
+        } else { demoAdminKeys.removeValue(forKey: id) }
+        cancelAPIUsage(for: id)
+        apiUsageByProfile.removeValue(forKey: id)
+        profiles = next
+    }
+
+    private func cancelAPIUsage(for id: UUID) {
+        apiUsageTasks.removeValue(forKey: id)?.cancel()
+        apiUsageGenerations.removeValue(forKey: id)
+        apiUsageLastAttempts.removeValue(forKey: id)
+        if apiUsageByProfile[id] != nil { apiUsageByProfile[id]?.isLoading = false }
+    }
+
+    func refreshAPIUsage(for id: UUID, force: Bool = false) {
+        guard !busy, let profile = profiles.first(where: { $0.id == id && $0.kind == .openai }),
+              let settings = profile.apiUsageSettings, apiUsageTasks[id] == nil else { return }
+        let now = Date()
+        if !force, let last = apiUsageLastAttempts[id], now.timeIntervalSince(last) < 60,
+           apiUsageByProfile[id]?.snapshot?.monthStart == APIUsageFormat.monthStart(at: now) { return }
+        if demo {
+            let result = APIUsageFetchResult(monthStart: APIUsageFormat.monthStart(at: now), fetchedAt: now,
+                usage: .success(APITokenUsage(inputTokens: 1_284_960, outputTokens: 186_420, requests: 428, cachedInputTokens: 864_000)),
+                cost: .success(APICost(amounts: ["usd": Decimal(string: "8.7342")!])),
+                rateLimits: settings.projectID == nil ? nil : .success([
+                    APIProjectRateLimit(id: "demo-rate-1", model: "gpt-4.1", requestsPerMinute: 500, tokensPerMinute: 200_000),
+                    APIProjectRateLimit(id: "demo-rate-2", model: "o4-mini", requestsPerMinute: 500, tokensPerMinute: 200_000)
+                ]))
+            apiUsageByProfile[id] = result.merging(nil)
+            return
+        }
+        var presentation = apiUsagePresentation(for: id)
+        apiUsageLastAttempts[id] = now
+        let key: String
+        do {
+            guard let saved = try credentials.loadAdminKey(id: id) else { throw APIUsageError.missingAdminKey }
+            key = saved
+        } catch {
+            presentation.errors = [.cost: .missingAdminKey, .usage: .missingAdminKey]
+            apiUsageByProfile[id] = presentation
+            return
+        }
+        let generation = UUID()
+        apiUsageGenerations[id] = generation
+        presentation.isLoading = true
+        apiUsageByProfile[id] = presentation
+        let client = apiUsageClient
+        apiUsageTasks[id] = Task { [weak self] in
+            let result = await client.fetch(settings: settings, adminKey: key, now: now)
+            guard !Task.isCancelled, let self, self.apiUsageGenerations[id] == generation,
+                  let index = self.profiles.firstIndex(where: { $0.id == id && $0.apiUsageSettings == settings }) else { return }
+            self.apiUsageTasks.removeValue(forKey: id)
+            self.apiUsageGenerations.removeValue(forKey: id)
+            let updated = result.merging(self.apiUsageByProfile[id]?.snapshot)
+            self.apiUsageByProfile[id] = updated
+            // Other account operations save a captured profile list; do not race
+            // them when persisting this optional display cache.
+            if !self.busy {
+                self.profiles[index].lastAPIUsage = updated.snapshot
+                try? self.storage.save(self.profiles)
+            }
+        }
+    }
+
     func quotaPresentation(for profile: CodexProfile) -> QuotaPresentation {
         if matchesCurrentLogin(profile) { return currentQuotaPresentation }
         let quota = profile.accountID.flatMap { quotaByAccount[$0] }
@@ -428,6 +564,9 @@ final class AppState: ObservableObject {
 
     func refresh(retryMissingPlanTypes: Bool = false) {
         guard !demo, !busy else { return }
+        for profile in profiles where profile.kind == .openai && profile.apiUsageSettings != nil {
+            refreshAPIUsage(for: profile.id, force: retryMissingPlanTypes)
+        }
         if retryMissingPlanTypes { planRecoveryAttempts.removeAll(); nameRecoveryAttempts.removeAll() }
         recoverMissingAccountPlans()
         recoverMissingAccountNames()
@@ -587,6 +726,7 @@ final class AppState: ObservableObject {
                   (pathValue.isEmpty || NSString(string: pathValue).expandingTildeInPath.hasPrefix("/")) else { throw StoreError.invalidDirectory }
             let nextStore = try storage.copyProfiles(to: URL(fileURLWithPath: expanded, isDirectory: true), profiles: profiles)
             let storageChanged = nextStore.directory.resolvingSymlinksInPath().path != storage.directory.resolvingSymlinksInPath().path
+            if storageChanged { for id in Array(apiUsageTasks.keys) { cancelAPIUsage(for: id) } }
             storage = nextStore; profileDirectory = nextStore.directory.path
             codexHome = homeValue; codexPath = pathValue
             preferences.set(profileDirectory, forKey: ProfileStore.preferenceKey)
@@ -707,27 +847,40 @@ final class AppState: ObservableObject {
             if !sameName(title, profileDisplayName(profiles[index])) {
                 try ensureUniqueName(title, excludingProfileID: existing.id)
             }
+            let keyChanged = existing.kind == .openai && !replacementSecret.isEmpty && CredentialSnapshot.fingerprint("api\0" + replacementSecret) != existing.secretFingerprint
             let updated = CodexProfile(id: existing.id, name: title, kind: existing.kind, model: selectedModel,
                                        baseURL: address, hasSecret: existing.hasSecret || !replacementSecret.isEmpty,
                                        accountEmail: existing.accountEmail, accountID: existing.accountID,
                                        secretFingerprint: existing.kind == .openai && !replacementSecret.isEmpty ? CredentialSnapshot.fingerprint("api\0" + replacementSecret) : existing.secretFingerprint,
                                        accountPlanType: profiles[index].accountPlanType, lastQuota: profiles[index].lastQuota,
                                        accountDisplayName: profiles[index].accountDisplayName,
-                                       hasCustomName: existing.kind == .chatgpt ? true : existing.hasCustomName)
+                                       hasCustomName: existing.kind == .chatgpt ? true : existing.hasCustomName,
+                                       apiUsageSettings: keyChanged ? nil : profiles[index].apiUsageSettings,
+                                       lastAPIUsage: keyChanged ? nil : profiles[index].lastAPIUsage)
             var next = profiles; next[index] = updated
             if !demo {
                 let keys = credentials
                 let previous = !replacementSecret.isEmpty ? try previousCredential(keys: keys, id: existing.id) : nil
+                let previousAdmin = keyChanged ? try keys.loadAdminKey(id: existing.id) : nil
                 if !replacementSecret.isEmpty { try keys.save(replacementSecret, id: existing.id) }
-                do { try storage.save(next) }
+                do {
+                    if keyChanged { try keys.deleteAdminKey(id: existing.id) }
+                    try storage.save(next)
+                }
                 catch {
                     if !replacementSecret.isEmpty {
                         try restoreCredential(keys: keys, id: existing.id, previous: previous)
                     }
+                    if let previousAdmin { try keys.saveAdminKey(previousAdmin, id: existing.id) }
                     throw error
                 }
             } else if existing.kind == .openai && !replacementSecret.isEmpty {
                 demoAPIKeys[existing.id] = replacementSecret
+            }
+            if keyChanged {
+                cancelAPIUsage(for: existing.id)
+                apiUsageByProfile.removeValue(forKey: existing.id)
+                demoAdminKeys.removeValue(forKey: existing.id)
             }
             profiles = next; editing = nil; page = .manage
             if !demo { diagnostics.record(.profileSaved) }
@@ -740,7 +893,8 @@ final class AppState: ObservableObject {
         guard !busy else { return }
         guard !isCurrent(profile) else { setMessage(L("当前使用中的配置不能删除，请先切换到其他配置。"), error: true); return }
         let remaining = profiles.filter { $0.id != profile.id }
-        if demo { profiles = remaining; demoAPIKeys.removeValue(forKey: profile.id); discardUnreferencedQuota(profile, remaining: remaining); setMessage(L("模拟配置已移除。")); return }
+        cancelAPIUsage(for: profile.id)
+        if demo { profiles = remaining; demoAPIKeys.removeValue(forKey: profile.id); demoAdminKeys.removeValue(forKey: profile.id); apiUsageByProfile.removeValue(forKey: profile.id); discardUnreferencedQuota(profile, remaining: remaining); setMessage(L("模拟配置已移除。")); return }
         busy = true; invalidateCurrentRefresh(); setMessage(L("正在移除配置…"))
         let service = service(), storage = storage, keys = credentials
         DispatchQueue.global(qos: .userInitiated).async {
@@ -749,11 +903,13 @@ final class AppState: ObservableObject {
                 try service.removeProvider(profile)
                 try storage.save(remaining); metadataRemoved = true
                 if profile.hasSecret { try keys.delete(id: profile.id) }
+                if profile.kind == .openai { try keys.deleteAdminKey(id: profile.id) }
             }
             DispatchQueue.main.async {
                 self.busy = false
                 if metadataRemoved {
                     self.profiles = remaining
+                    self.apiUsageByProfile.removeValue(forKey: profile.id)
                     self.discardUnreferencedQuota(profile, remaining: remaining)
                     if self.pendingProfileID == profile.id { self.cancelPending() }
                 }

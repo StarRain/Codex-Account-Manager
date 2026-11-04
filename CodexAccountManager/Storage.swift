@@ -82,6 +82,7 @@ struct SavedCredentialFiles: CredentialStoring {
     private let sizeLimit = 1_048_576
 
     private func filename(_ id: UUID) -> String { id.uuidString.lowercased() + ".json" }
+    private func adminFilename(_ id: UUID) -> String { id.uuidString.lowercased() + ".admin.json" }
 
     private func withDirectory<T>(_ body: (Int32) throws -> T) throws -> T {
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
@@ -204,6 +205,34 @@ struct SavedCredentialFiles: CredentialStoring {
         }
     }
 
+    // Administration credentials are never encoded as Codex login credentials.
+    func saveAdminKey(_ secret: String, id: UUID) throws {
+        let key = try APIUsageSettings.validatedAdminKey(secret)
+        let data = try JSONSerialization.data(withJSONObject: ["OPENAI_ADMIN_KEY": key], options: [.sortedKeys])
+        try withDirectory { try write(data, name: adminFilename(id), in: $0, overwrite: true) }
+    }
+
+    func loadAdminKey(id: UUID) throws -> String? {
+        try withDirectory { directoryFD in
+            guard let data = try read(adminFilename(id), from: directoryFD) else { return nil }
+            return try decodedAdminKey(data)
+        }
+    }
+
+    private func decodedAdminKey(_ data: Data) throws -> String {
+        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: String],
+              let key = object["OPENAI_ADMIN_KEY"] else { throw StoreError.invalidSecret }
+        return try APIUsageSettings.validatedAdminKey(key)
+    }
+
+    func deleteAdminKey(id: UUID) throws {
+        try withDirectory { directoryFD in
+            let name = adminFilename(id)
+            guard try read(name, from: directoryFD) != nil else { return }
+            guard unlinkat(directoryFD, name, 0) == 0 else { throw StoreError.credentialFile }
+        }
+    }
+
     func delete(id: UUID) throws {
         try withDirectory { directoryFD in
             let name = filename(id)
@@ -212,14 +241,18 @@ struct SavedCredentialFiles: CredentialStoring {
         }
     }
 
-    private func snapshot(ids: [UUID]) throws -> [UUID: Data] {
+    private func snapshot(ids: [UUID]) throws -> [String: Data] {
         guard !ids.isEmpty else { return [:] }
         return try withDirectory { directoryFD in
-            var result: [UUID: Data] = [:]
+            var result: [String: Data] = [:]
             for id in ids {
                 if let data = try read(filename(id), from: directoryFD) {
                     _ = try decoded(data)
-                    result[id] = data
+                    result[filename(id)] = data
+                }
+                if let data = try read(adminFilename(id), from: directoryFD) {
+                    _ = try decodedAdminKey(data)
+                    result[adminFilename(id)] = data
                 }
             }
             return result
@@ -232,13 +265,14 @@ struct SavedCredentialFiles: CredentialStoring {
               !ids.isEmpty else { return }
         let source = try snapshot(ids: ids)
         try destination.withDirectory { directoryFD in
-            for id in ids {
-                let existing = try destination.read(destination.filename(id), from: directoryFD)
-                if let existing, existing != source[id] { throw StoreError.destinationHasCredentials }
+            let names = ids.flatMap { [filename($0), adminFilename($0)] }
+            for name in names {
+                let existing = try destination.read(name, from: directoryFD)
+                if let existing, existing != source[name] { throw StoreError.destinationHasCredentials }
             }
-            for id in ids {
-                guard let data = source[id], try destination.read(destination.filename(id), from: directoryFD) == nil else { continue }
-                try destination.write(data, name: destination.filename(id), in: directoryFD, overwrite: false)
+            for name in names {
+                guard let data = source[name], try destination.read(name, from: directoryFD) == nil else { continue }
+                try destination.write(data, name: name, in: directoryFD, overwrite: false)
             }
         }
         guard try snapshot(ids: ids) == source else { throw StoreError.credentialFile }

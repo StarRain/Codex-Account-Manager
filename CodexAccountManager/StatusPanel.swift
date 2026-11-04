@@ -233,21 +233,30 @@ struct StatusPanelView: View {
                 Spacer()
                 Button { state.refresh(retryMissingPlanTypes: true) } label: {
                     Group {
-                        if state.quotaRefreshInProgress { ProgressView().controlSize(.small) }
+                        if state.quotaRefreshInProgress || state.apiUsageRefreshInProgress { ProgressView().controlSize(.small) }
                         else { Image(systemName: "arrow.clockwise") }
                     }.frame(width: 28, height: 28).contentShape(Rectangle())
                 }
                     .buttonStyle(.plain).foregroundStyle(PanelColors.secondary)
-                    .disabled(state.busy || state.quotaRefreshInProgress)
+                    .disabled(state.busy || state.quotaRefreshInProgress || state.apiUsageRefreshInProgress)
                     .help(L("刷新额度"))
                     .accessibilityLabel(state.quotaRefreshInProgress ? L("正在刷新额度…") : L("刷新额度"))
             }
             if state.current.accountType == "chatgpt" {
                 quotaContent
+            } else if state.current.accountType == "apiKey", let profile = state.currentAPIUsageProfile,
+                      let settings = profile.apiUsageSettings {
+                ScrollView {
+                    APIUsageSummary(settings: settings, presentation: state.apiUsagePresentation(for: profile.id), compact: true)
+                }
             } else {
-                Text(state.current.accountType == "apiKey" ? L("当前使用 API Key") : L("当前没有官方账号登录"))
-                    .font(.system(size: 11)).foregroundStyle(PanelColors.muted)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(state.current.accountType == "apiKey" ? L("在主面板配置 API 用量查询。") : L("当前没有官方账号登录"))
+                        .font(.system(size: 11)).foregroundStyle(PanelColors.muted)
+                    if state.current.accountType == "apiKey" {
+                        Button(L("打开主面板")) { close(); openMain() }.font(.system(size: 11))
+                    }
+                }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         }.padding(.horizontal, 16).padding(.top, 10).padding(.bottom, 8).frame(maxHeight: .infinity, alignment: .top)
     }

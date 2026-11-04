@@ -42,6 +42,7 @@ The screenshot is from demo mode; the accounts and usage figures are sample data
 - Group plan types returned by Codex as `Free`, `Plus`, `Pro`, `Team`, or `Unknown`; refer to ChatGPT settings for the actual subscription name.
 - Show usage windows, remaining percentages, reset times, and credits returned by the service.
 - Manually refresh the active login's usage; other accounts show their last retrieved results.
+- Configure a separate Admin API key to show monthly API costs, input/output tokens, cached input tokens, and generation requests. Add a project ID to also view model rate limits.
 - API key billing is separate from ChatGPT usage; CAM does not display API key balances.
 
 ### Experience
@@ -49,6 +50,7 @@ The screenshot is from demo mode; the accounts and usage figures are sample data
 - Switch configurations from the menu bar or main panel; the Dock icon is shown while the main window is open.
 - Choose light, dark, or system appearance, launch at login, and silent startup.
 - Search accounts, use panel keyboard shortcuts, and inspect local diagnostic logs.
+- Account and API key cards show a compact overview with expandable details; refresh actions display a loading indicator.
 - Configure the Codex directory, app data directory, and session history grouping.
 - Manually check for the latest stable GitHub release from About and open its download page.
 
@@ -113,8 +115,11 @@ The build script creates an ad-hoc signed app that is not Apple developer-signed
 3. Choose a saved configuration in the main panel or menu bar. CAM backs up the current login before switching.
 4. If Codex desktop is running, choose whether to restart it now or switch after it exits.
 5. Select “Refresh usage limits” to query the active ChatGPT login again; use “Sign in again” for a saved account whose credentials have expired.
+6. Expand an API key card, select “Configure”, enter an Admin API key, then select “Save and fetch”. Project and API key IDs are optional; leaving them blank explicitly shows organization-wide totals. A regular model API key cannot replace the Admin API key.
 
 If your browser is signed in to another account, turn off automatic browser opening and copy the sign-in link to another browser or a private window. Device-code login must be enabled in ChatGPT security settings or workspace permissions.
+
+API statistics cover the current UTC calendar month. Costs come from the official Costs API, tokens and requests from Completions Usage, and project limits from Project Rate Limits; reporting can be delayed. Failed refreshes retain and label previous results from the current month, without carrying last month's totals into a new month. Model rate limits are configured ceilings, not remaining capacity. Reconfigure reporting after replacing a model API key.
 
 ### Panel shortcuts
 
@@ -141,6 +146,7 @@ This setting does not migrate older sessions from other provider groups or merge
 
 - App data defaults to `~/.cam`: account information is in `profiles.json`, credentials are in `credentials/`, and diagnostic logs are in `diagnostics.log`.
 - Credential files are unencrypted; the credentials directory uses `0700` permissions and files use `0600`. Do not commit or share them.
+- The reporting Admin API key is stored separately in `credentials/<profile ID>.admin.json`, never in Codex login files, and is sent only to read-only endpoints on the official `api.openai.com` host. Removing reporting configuration deletes its Admin API key; changing the app data directory copies it with the other credentials.
 - Codex file credentials default to `~/.codex/auth.json`. On startup, CAM reads `CODEX_HOME` from its environment; the directory can also be set manually.
 - An app launched from Finder may not inherit environment variables set only in a terminal. The desktop app and CLI must use the same Codex Home to share a login.
 - Account sign-in uses a temporary directory and cleans it up after completion or cancellation; files may remain in the system temporary directory after an abnormal exit.

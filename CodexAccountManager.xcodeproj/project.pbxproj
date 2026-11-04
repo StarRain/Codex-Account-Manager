@@ -6,6 +6,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		100000000000000000000017 /* APIUsageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20000000000000000000001A /* APIUsageTests.swift */; };
+		100000000000000000000015 /* APIUsage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000018 /* APIUsage.swift */; };
+		100000000000000000000016 /* APIUsageViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000019 /* APIUsageViews.swift */; };
 		100000000000000000000001 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000001 /* AppState.swift */; };
 		100000000000000000000002 /* Branding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000002 /* Branding.swift */; };
 		100000000000000000000003 /* CodexClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000000000003 /* CodexClient.swift */; };
@@ -39,6 +42,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		20000000000000000000001A /* APIUsageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIUsageTests.swift; sourceTree = "<group>"; };
+		200000000000000000000018 /* APIUsage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIUsage.swift; sourceTree = "<group>"; };
+		200000000000000000000019 /* APIUsageViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIUsageViews.swift; sourceTree = "<group>"; };
 		200000000000000000000001 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		200000000000000000000002 /* Branding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Branding.swift; sourceTree = "<group>"; };
 		200000000000000000000003 /* CodexClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexClient.swift; sourceTree = "<group>"; };
@@ -85,6 +91,8 @@
 			isa = PBXGroup;
 			children = (
 				200000000000000000000001 /* AppState.swift */,
+				200000000000000000000018 /* APIUsage.swift */,
+				200000000000000000000019 /* APIUsageViews.swift */,
 				200000000000000000000002 /* Branding.swift */,
 				200000000000000000000003 /* CodexClient.swift */,
 				200000000000000000000004 /* DiagnosticLog.swift */,
@@ -105,7 +113,7 @@
 		300000000000000000000003 /* Resources */ = {isa = PBXGroup; children = (20000000000000000000000B /* AppIcon.icns */, 200000000000000000000013 /* Edit.png */, 200000000000000000000014 /* SwitchAccount.png */,); path = Resources; sourceTree = "<group>"; };
 		300000000000000000000004 /* CodexAccountManagerTests */ = {
 			isa = PBXGroup;
-			children = (20000000000000000000000E /* CodexAccountManagerTests.swift */, 300000000000000000000005 /* Fixtures */,);
+			children = (20000000000000000000000E /* CodexAccountManagerTests.swift */, 20000000000000000000001A /* APIUsageTests.swift */, 300000000000000000000005 /* Fixtures */,);
 			path = CodexAccountManagerTests;
 			sourceTree = "<group>";
 		};
@@ -172,10 +180,10 @@
 		700000000000000000000003 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (100000000000000000000001 /* AppState.swift in Sources */, 100000000000000000000002 /* Branding.swift in Sources */, 100000000000000000000003 /* CodexClient.swift in Sources */, 100000000000000000000004 /* DiagnosticLog.swift in Sources */, 100000000000000000000005 /* FileCredentials.swift in Sources */, 100000000000000000000013 /* Localization.swift in Sources */, 100000000000000000000014 /* UpdateChecker.swift in Sources */, 100000000000000000000006 /* Main.swift in Sources */, 100000000000000000000007 /* Models.swift in Sources */, 100000000000000000000008 /* Storage.swift in Sources */, 100000000000000000000012 /* StatusPanel.swift in Sources */, 100000000000000000000009 /* Views.swift in Sources */,);
+			files = (100000000000000000000001 /* AppState.swift in Sources */, 100000000000000000000015 /* APIUsage.swift in Sources */, 100000000000000000000016 /* APIUsageViews.swift in Sources */, 100000000000000000000002 /* Branding.swift in Sources */, 100000000000000000000003 /* CodexClient.swift in Sources */, 100000000000000000000004 /* DiagnosticLog.swift in Sources */, 100000000000000000000005 /* FileCredentials.swift in Sources */, 100000000000000000000013 /* Localization.swift in Sources */, 100000000000000000000014 /* UpdateChecker.swift in Sources */, 100000000000000000000006 /* Main.swift in Sources */, 100000000000000000000007 /* Models.swift in Sources */, 100000000000000000000008 /* Storage.swift in Sources */, 100000000000000000000012 /* StatusPanel.swift in Sources */, 100000000000000000000009 /* Views.swift in Sources */,);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		700000000000000000000004 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (10000000000000000000000D /* CodexAccountManagerTests.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
+		700000000000000000000004 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (10000000000000000000000D /* CodexAccountManagerTests.swift in Sources */, 100000000000000000000017 /* APIUsageTests.swift in Sources */,); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */

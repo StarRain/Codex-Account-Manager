@@ -37,11 +37,13 @@ struct CodexProfile: Codable, Identifiable, Equatable {
     var lastQuota: AccountQuota? = nil
     var accountDisplayName: String? = nil
     var hasCustomName: Bool? = nil
+    var apiUsageSettings: APIUsageSettings? = nil
+    var lastAPIUsage: APIUsageSnapshot? = nil
 
     var providerID: String { "cam_" + id.uuidString.replacingOccurrences(of: "-", with: "").lowercased() }
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, kind, model, baseURL, hasSecret, accountEmail, accountID, secretFingerprint, accountPlanType, lastQuota, accountDisplayName, hasCustomName
+        case id, name, kind, model, baseURL, hasSecret, accountEmail, accountID, secretFingerprint, accountPlanType, lastQuota, accountDisplayName, hasCustomName, apiUsageSettings, lastAPIUsage
     }
 }
 
@@ -62,6 +64,8 @@ extension CodexProfile {
         lastQuota = try? values.decode(AccountQuota.self, forKey: .lastQuota)
         accountDisplayName = try values.decodeIfPresent(String.self, forKey: .accountDisplayName)
         hasCustomName = try values.decodeIfPresent(Bool.self, forKey: .hasCustomName)
+        apiUsageSettings = try values.decodeIfPresent(APIUsageSettings.self, forKey: .apiUsageSettings)
+        lastAPIUsage = try? values.decode(APIUsageSnapshot.self, forKey: .lastAPIUsage)
     }
 }
 
