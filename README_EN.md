@@ -51,6 +51,7 @@ The screenshot is from demo mode; the accounts and usage figures are sample data
 - Choose light, dark, or system appearance, launch at login, and silent startup.
 - Search accounts, use panel keyboard shortcuts, and inspect local diagnostic logs.
 - Account and API key cards show a compact overview with expandable details; refresh actions display a loading indicator.
+- Notifications appear at the top and dismiss automatically; a separate card keeps the pending switch target visible.
 - Configure the Codex directory, app data directory, and session history grouping.
 - Manually check for the latest stable GitHub release from About and open its download page.
 

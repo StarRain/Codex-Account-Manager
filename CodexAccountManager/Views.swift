@@ -81,6 +81,9 @@ enum PanelColors {
     static let accentBackground = adaptive(0xe8f1ff, 0x253b55)
     static let active = adaptive(0xecf4ff, 0x202f42)
     static let activeBorder = adaptive(0x9bbbed, 0x476b98)
+    static let pending = adaptive(0xfff8eb, 0x30291f)
+    static let pendingAccent = adaptive(0x935c0b, 0xf2c078)
+    static let pendingBorder = adaptive(0xe8cca1, 0x705735)
 }
 
 enum PanelMenuPlacement {
@@ -593,6 +596,9 @@ private struct PanelContent: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(PanelColors.background).foregroundStyle(PanelColors.text)
+        .overlay(alignment: .top) {
+            StatusToast(state: state).padding(.horizontal, 24).padding(.top, 8)
+        }
         .sheet(isPresented: Binding(get: { state.page == .add }, set: { visible in
             if !visible && state.page == .add { state.editing = nil; state.editingCurrent = nil; state.page = .manage; state.setMessage("") }
         })) { AddView(state: state, initialKind: navigation.newKind).interactiveDismissDisabled(state.accountLogin != nil || (state.editingCurrent != nil && state.busy)) }
@@ -644,6 +650,163 @@ private struct StatusMessage: View {
     }
 }
 
+private struct StatusToast: View {
+    @ObservedObject var state: AppState
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var isVisible: Bool {
+        !state.message.isEmpty && state.page != .add && state.editingAPIUsage == nil
+    }
+
+    var body: some View {
+        ZStack(alignment: .top) {
+            if isVisible {
+                let id = state.messageID
+                StatusToastContent(message: state.message, isError: state.isError, isBusy: state.busy) {
+                    guard state.messageID == id, !state.busy else { return }
+                    state.setMessage("")
+                }
+                .id(id)
+                .transition(reduceMotion ? .opacity : .asymmetric(
+                    insertion: .move(edge: .top).combined(with: .opacity)
+                        .animation(.spring(response: 0.35, dampingFraction: 0.86)),
+                    removal: .move(edge: .top).combined(with: .opacity)
+                        .animation(.easeIn(duration: 0.22))))
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .top)
+        .allowsHitTesting(isVisible)
+        .animation(.easeInOut(duration: reduceMotion ? 0.15 : 0.22), value: state.messageID)
+        .animation(.easeInOut(duration: reduceMotion ? 0.15 : 0.22), value: isVisible)
+    }
+}
+
+private struct StatusToastContent: View {
+    let message: String
+    let isError: Bool
+    let isBusy: Bool
+    let dismiss: () -> Void
+    @State private var countdownProgress: CGFloat = 0
+
+    private var tint: Color { isError ? .red : PanelColors.accent }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Group {
+                if isBusy {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Image(systemName: isError ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
+                        .font(.system(size: 16)).foregroundStyle(tint)
+                }
+            }.frame(width: 18, height: 28).accessibilityHidden(true)
+            Text(message).font(.system(size: 12, weight: .medium))
+                .foregroundStyle(PanelColors.text)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+            if !isBusy {
+                Button(action: dismiss) {
+                    ZStack {
+                        Circle().stroke(PanelColors.border, lineWidth: 1.5)
+                        Circle().trim(from: 0, to: countdownProgress)
+                            .stroke(tint, style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+                            .rotationEffect(.degrees(-90))
+                        Image(systemName: "xmark").font(.system(size: 9, weight: .semibold))
+                    }.frame(width: 24, height: 24).frame(width: 28, height: 28).contentShape(Rectangle())
+                }.buttonStyle(.plain).foregroundStyle(PanelColors.muted)
+                    .help(L("关闭提示")).accessibilityLabel(L("关闭提示"))
+            }
+        }
+        .padding(.leading, 14).padding(.trailing, 10).padding(.vertical, 10)
+        .frame(maxWidth: 460, alignment: .leading)
+        .background(PanelColors.card, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12)
+            .stroke(isError ? Color.red.opacity(0.45) : PanelColors.borderStrong, lineWidth: 1)
+            .allowsHitTesting(false))
+        .shadow(color: .black.opacity(0.16), radius: 12, y: 4)
+        .accessibilityIdentifier("status-toast")
+        .task(id: isBusy) {
+            countdownProgress = 0
+            // Ongoing operations retain their status; the countdown starts after entry.
+            guard !isBusy else { return }
+            let duration = isError ? 6.0 : 3.0
+            do {
+                try await Task.sleep(nanoseconds: 300_000_000)
+                guard !Task.isCancelled else { return }
+                withAnimation(.linear(duration: duration)) { countdownProgress = 1 }
+                try await Task.sleep(nanoseconds: UInt64(duration * 1_000_000_000))
+            } catch { return }
+            guard !Task.isCancelled else { return }
+            dismiss()
+        }
+    }
+}
+
+private struct PendingSwitchCard: View {
+    @ObservedObject var state: AppState
+    let profile: CodexProfile
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 16) {
+                target
+                Spacer(minLength: 12)
+                actions
+            }
+            VStack(alignment: .leading, spacing: 14) {
+                target
+                HStack { Spacer(minLength: 0); actions }
+            }
+        }
+        .padding(16)
+        .background(PanelColors.pending, in: RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(PanelColors.pendingBorder, lineWidth: 1).allowsHitTesting(false))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("pending-switch-card")
+    }
+
+    private var target: some View {
+        HStack(spacing: 12) {
+            Group {
+                if state.busy { ProgressView().controlSize(.small) }
+                else { Image(systemName: "clock.arrow.circlepath").font(.system(size: 20, weight: .medium)) }
+            }
+            .foregroundStyle(PanelColors.pendingAccent)
+            .frame(width: 42, height: 42)
+            .background(PanelColors.pendingAccent.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+            .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 8) {
+                    Text(L("待切换")).font(.system(size: 12, weight: .semibold)).foregroundStyle(PanelColors.pendingAccent)
+                    Text(profile.kind.title).font(.system(size: 11)).foregroundStyle(PanelColors.secondary)
+                }
+                Text(state.profileDisplayName(profile))
+                    .font(.system(size: 15, weight: .semibold)).foregroundStyle(PanelColors.text)
+                    .lineLimit(1).truncationMode(.middle)
+                    .help(state.profileDisplayName(profile))
+            }
+        }
+    }
+
+    private var actions: some View {
+        HStack(spacing: 8) {
+            Button(L("取消")) { state.cancelPending(); state.setMessage("") }
+                .buttonStyle(OutlineButtonStyle())
+                .accessibilityLabel(L("取消切换"))
+                .accessibilityIdentifier("cancel-pending-switch")
+            Button {
+                state.requestActivation(profile, reauthenticate: state.pendingReauthentication)
+            } label: {
+                Label(L("重试切换"), systemImage: "arrow.clockwise")
+            }
+            .buttonStyle(PrimaryButtonStyle())
+            .accessibilityIdentifier("retry-pending-switch")
+        }
+        .fixedSize()
+        .disabled(state.busy)
+    }
+}
+
 private struct ManageView: View {
     @ObservedObject var state: AppState
     @ObservedObject var navigation: PanelNavigation
@@ -654,6 +817,7 @@ private struct ManageView: View {
     @State private var openMenu: PanelMenuTarget?
     @FocusState private var searchFocused: Bool
     @FocusState private var menuFocusedItem: Int?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var isRefreshing: Bool { state.quotaRefreshInProgress || state.apiUsageRefreshInProgress }
 
@@ -688,6 +852,11 @@ private struct ManageView: View {
                 }
             }.padding(.horizontal, 28).frame(height: 70)
             Rectangle().fill(PanelColors.border).frame(height: 1)
+            if let pending = state.profiles.first(where: { $0.id == state.pendingProfileID }) {
+                PendingSwitchCard(state: state, profile: pending)
+                    .padding(.horizontal, 28).padding(.top, 20)
+                    .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
+            }
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     HStack(spacing: 9) {
@@ -702,16 +871,8 @@ private struct ManageView: View {
                     ForEach(section.kinds) { kind in group(kind) }
                 }.frame(maxWidth: .infinity, alignment: .leading).padding(28)
             }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            if let pending = state.profiles.first(where: { $0.id == state.pendingProfileID }) {
-                HStack {
-                    Label(L("待切换：\(state.profileDisplayName(pending))"), systemImage: "clock").font(.system(size: 11)).foregroundStyle(PanelColors.secondary)
-                    Spacer()
-                    Button(L("重试")) { state.requestActivation(pending, reauthenticate: state.pendingReauthentication) }.disabled(state.busy)
-                    Button(L("取消")) { state.cancelPending(); state.setMessage("") }.disabled(state.busy)
-                }.padding(.horizontal, 24).padding(.bottom, 8)
-            }
-            if !state.message.isEmpty { StatusMessage(state: state).padding(.horizontal, 24).padding(.bottom, 12) }
         }
+        .animation(.easeInOut(duration: reduceMotion ? 0.15 : 0.22), value: state.pendingProfileID)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .overlayPreferenceValue(PanelMenuAnchorKey.self) { anchors in
             GeometryReader { geometry in
@@ -1277,7 +1438,6 @@ private struct SettingsView: View {
                     }
                 }.frame(maxWidth: .infinity, alignment: .leading).padding(28)
             }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            if !state.message.isEmpty { StatusMessage(state: state).padding(.horizontal, 28).padding(.bottom, 10) }
             if section == .config {
                 Rectangle().fill(PanelColors.border).frame(height: 1)
                 HStack {

@@ -117,6 +117,7 @@ enum Localization {
     ]
 
     private static let english: [String: String] = [
+        "关闭提示": "Dismiss notification",
         "展开详情": "Show details",
         "收起详情": "Hide details",
         "已展开": "Expanded",
@@ -213,6 +214,9 @@ enum Localization {
         "搜索账号或配置（⌘F）": "Search accounts or configurations (⌘F)",
         "演示模式 · 模拟数据": "Demo mode · Sample data",
         "待切换：{0}": "Pending switch: {0}",
+        "待切换": "Pending switch",
+        "重试切换": "Retry switch",
+        "取消切换": "Cancel switch",
         "重试": "Retry",
         "取消": "Cancel",
         "关闭菜单": "Close menu",

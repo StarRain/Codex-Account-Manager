@@ -36,6 +36,7 @@ final class AppState: ObservableObject {
     @Published var busy = false
     @Published var message = ""
     @Published var isError = false
+    @Published private(set) var messageID = UUID()
     @Published var page: Page = .menu
     @Published var editing: CodexProfile?
     @Published var editingCurrent: CurrentCodex?
@@ -264,7 +265,11 @@ final class AppState: ObservableObject {
         } catch { setMessage(L("无法打开诊断日志，请检查存储目录。"), error: true) }
     }
 
-    func setMessage(_ text: String, error: Bool = false) { message = text; isError = error }
+    func setMessage(_ text: String, error: Bool = false) {
+        message = text
+        isError = error
+        messageID = UUID()
+    }
 
     func requestActivation(_ profile: CodexProfile, reauthenticate: Bool = false) {
         guard reauthenticate || !isCurrent(profile) else { return }
